@@ -141,6 +141,7 @@ class MainWindow(QMainWindow):
         with open(d, encoding='UTF-8') as loadOrder:
             data = json.load(loadOrder)
             self.getLoadList(data)
+        # добавить проверку на первый запуск через  файл настроек
         with open(g, encoding='UTF-8') as dataOrder:
             data = json.load(dataOrder)
             self.modList = self.getDisplayList(data)
