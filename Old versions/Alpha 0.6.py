@@ -1,13 +1,12 @@
 #!/usr/bin/python3
 #-*- coding:utf-8 -*-
 import sys
-from PyQt5.QtWidgets import QApplication, QAction, QMainWindow, QMessageBox
+from PyQt5.QtWidgets import QApplication, QAction, QMainWindow
 from PyQt5.QtWidgets import QTableWidget, QTableWidgetItem, QAbstractItemView
 from PyQt5.QtCore import QSize, Qt
 from PyQt5.QtGui import QDropEvent, QColor
 import json
 import os
-import pathlib
 from shutil import copyfile
 
 
@@ -139,18 +138,9 @@ class MainWindow(QMainWindow):
         with open(m, encoding='UTF-8') as gameData:
             data = json.load(gameData)
             self.modList = self.getModList(data)
-        # ----------------------------------
-        DescDir = pathlib.Path('./mod')
-        DescPat = "*.mod"
-        self.realModList = list()
-        for currentFile in DescDir.glob(DescPat):
-            self.realModList.append(str(currentFile))
-        self.removeBadModInfo()
-        # ----------------------------------
         with open(d, encoding='UTF-8') as loadOrder:
             data = json.load(loadOrder)
             self.getLoadList(data)
-        # ----------------------------------
         # добавить проверку на первый запуск через  файл настроек
         with open(g, encoding='UTF-8') as dataOrder:
             data = json.load(dataOrder)
@@ -173,16 +163,13 @@ class MainWindow(QMainWindow):
                 print('key not found in ', name)
         return self.modList
 
-    # получение текущего списка загрузки (включённые моды)
     def getLoadList(self, data):
         load = data['enabled_mods']
         for i in load:
             for j in self.modList:
                 if str(i) == j.hashid:
                     j.isEnabled = 'yes'
-                    break
     
-    # получение текущего списка загрузки (порядок)
     def getDisplayList(self, data):
         load = data['modsOrder']
         newOrder = []
@@ -192,27 +179,6 @@ class MainWindow(QMainWindow):
                     newOrder.append(j)
                     continue
         return newOrder
-    
-    # удаление лишних модов в списке
-    def removeBadModInfo(self):
-        for mod in self.modList:
-            if mod.steamid not in self.realModList:
-                print('|', mod.name, '|', mod.steamid, '|')
-                self.modList.remove(mod)
-            else:
-                self.realModList.remove(mod.steamid)
-        if self.realModList != []:
-            print(self.realModList)
-            self.newModsInfo()
-    
-    # информирование о новых модах
-    # нужно протестировать присвоение хэшей
-    def newModsInfo(self):
-        buttonReply = QMessageBox.question(self, 'Warning', "There is a new mod(s) installed. Run default Stellaris launcher to add them or use current modlist?", QMessageBox.Ignore | QMessageBox.Reset, QMessageBox.Reset)
-        if buttonReply == QMessageBox.Reset:
-            # delete mods registry
-            # run stellaris
-            sys.exit()
     
     # загрузка из бэкапа
     def loadFromBackup(self):
