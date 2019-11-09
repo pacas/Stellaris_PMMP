@@ -13,21 +13,22 @@ from shutil import copyfile
 
 LastStateRole = Qt.UserRole
 
+# частично использован код из проекта
+# https://github.com/haifengkao/StellairsLoadOrderFixer24
+# перепишу чуть позже
+
 
 def sortedKey(mod):
     return mod.sortedKey
 
 
 class Mod():
-    def __init__(self, hashID, name, modID, version, source, steamID, dirPath, archivePath, isEnabled):
-        self.hashID = hashID
+    def __init__(self, hashid, name, steamid, version, source, isEnabled):
+        self.hashid = hashid
         self.name = name
-        self.modID = modID
+        self.steamid = steamid
         self.version = version
         self.source = source
-        self.steamID = steamID
-        self.dirPath = dirPath
-        self.archivePath = archivePath
         self.isEnabled = isEnabled
         self.sortedKey = name.encode('utf8', errors='ignore')
 
@@ -98,7 +99,6 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(self.table)
         self.dlc_load = 'dlc_load.json'
         self.mods_registry = 'mods_registry.json'
-        self.mods_data = 'mods_data.json'
         self.game_data = 'game_data.json'
         self.folder = 'backup'
         # ----------------------------------
@@ -139,7 +139,6 @@ class MainWindow(QMainWindow):
         with open(m, encoding='UTF-8') as gameData:
             data = json.load(gameData)
             self.modList = self.getModList(data)
-            self.createModList()
         # ----------------------------------
         DescDir = pathlib.Path('./mod')
         DescPat = "*.mod"
@@ -156,28 +155,19 @@ class MainWindow(QMainWindow):
         with open(g, encoding='UTF-8') as dataOrder:
             data = json.load(dataOrder)
             self.modList = self.getDisplayList(data)
-        self.idList = [mod.modID for mod in self.modList]
+        self.idList = [mod.steamid for mod in self.modList]
 
     def getModList(self, data):
-        for hashID, data in data.items():
+        for key, data in data.items():
             try:
                 name = data['displayName']
-                modID = data['gameRegistryId']
+                steamid = data['gameRegistryId']
                 source = data['source']
                 try:
                     version = data['requiredVersion']
                 except KeyError:
                     version = 'not found'
-                try:
-                    steamID = data['steamId']
-                except KeyError:
-                    steamID = ''
-                dirPath = data['dirPath']
-                try:
-                    archivePath = data['archivePath']
-                except KeyError:
-                    archivePath = ''
-                mod = Mod(hashID, name, modID, version, source, steamID, dirPath, archivePath, isEnabled='no')
+                mod = Mod(key, name, steamid, version, source, isEnabled='no')
                 self.modList.append(mod)
             except KeyError:
                 print('key not found in ', name)
@@ -188,7 +178,7 @@ class MainWindow(QMainWindow):
         load = data['enabled_mods']
         for i in load:
             for j in self.modList:
-                if str(i) == j.modID:
+                if str(i) == j.steamid:
                     j.isEnabled = 'yes'
                     break
     
@@ -198,7 +188,7 @@ class MainWindow(QMainWindow):
         newOrder = []
         for i in load:
             for j in self.modList:
-                if str(i) == j.hashID:
+                if str(i) == j.hashid:
                     newOrder.append(j)
                     continue
         return newOrder
@@ -206,12 +196,13 @@ class MainWindow(QMainWindow):
     # удаление лишних модов в списке
     def removeBadModInfo(self):
         for mod in self.modList:
-            if mod.modID not in self.realModList:
-                print('|', mod.name, '|', mod.modID, '|')
+            if mod.steamid not in self.realModList:
+                print('|', mod.name, '|', mod.steamid, '|')
                 self.modList.remove(mod)
             else:
-                self.realModList.remove(mod.modID)
+                self.realModList.remove(mod.steamid)
         if self.realModList != []:
+            print(self.realModList)
             self.newModsInfo()
     
     # информирование о новых модах
@@ -242,7 +233,7 @@ class MainWindow(QMainWindow):
         counter = 0
         for mod in self.modList:
             # ----------------------------------
-            self.table.setItem(counter, 0, QTableWidgetItem(mod.modID))
+            self.table.setItem(counter, 0, QTableWidgetItem(mod.steamid))
             # ----------------------------------
             self.table.setItem(counter, 1, QTableWidgetItem(mod.name))
             # ----------------------------------
@@ -283,7 +274,7 @@ class MainWindow(QMainWindow):
             r = self.idList.index(ID)
             modListNew.append(self.modList[r])
         self.modList = modListNew
-        self.idList = [mod.modID for mod in self.modList]
+        self.idList = [mod.steamid for mod in self.modList]
 
     # методы для меню
     def sortByType(self):
@@ -304,39 +295,6 @@ class MainWindow(QMainWindow):
             copyfile(self.game_data, self.folder + '//' + self.game_data)
 
     # запись в файлы
-    def createModList(self):
-        allFile = dict()
-        for mod in self.modList:
-            md = dict()
-            try:
-                md.update([('displayName', mod.name)])
-                md.update([('gameRegistryId', mod.modID)])
-                md.update([('source', mod.source)])
-                if mod.steamID != '':
-                    md.update([('steamId', mod.steamID)])
-                md.update([('requiredVersion', mod.version)])
-                md.update([('dirPath', mod.dirPath)])
-                if mod.archivePath != '':
-                    md.update([('archivePath', mod.archivePath)])                    
-                md.update([('status', 'ready_to_play')])
-                md.update([('id', mod.hashID)])
-            except KeyError:
-                print('error in ', mod.name)
-            allFile.update([(mod.hashID, md)])
-        with open(self.mods_data, 'w') as json_file:
-            json.dump(allFile, json_file, ensure_ascii=False)
-        with open(self.mods_data, 'r', encoding="utf-8") as f:
-            lines = f.readlines()
-        lines = [line.replace('": ', '":') for line in lines]
-        lines = [line.replace('", "', '","') for line in lines]
-        lines = [line.replace('"}, ', '"},') for line in lines]
-        with open(self.mods_data, 'w') as f:
-            f.writelines(lines)
-        copyfile(self.mods_data, self.folder + '//' + self.mods_registry + '.bak')
-        os.remove(self.mods_registry)
-        copyfile(self.mods_data, self.mods_registry)
-
-    # запись включённых модов
     def writeLoadOrder(self):
         data = {}
         with open(self.dlc_load, 'r+') as json_file:
@@ -344,31 +302,18 @@ class MainWindow(QMainWindow):
         summary = []
         for mod in self.modList:
             if mod.isEnabled == 'yes':
-                summary.append(mod.modID)
+                summary.append(mod.steamid)
         data['enabled_mods'] = summary
         with open('dlc_load.json', 'w') as json_file:
             json.dump(data, json_file)
 
-    # запись порядка загрузки
     def writeDisplayOrder(self):
         data = {}
         with open(self.game_data, 'r+') as json_file:
             data = json.load(json_file)
         summary = []
         for mod in self.modList:
-            summary.append(mod.hashID)
-        data['modsOrder'] = summary
-        with open('game_data.json', 'w') as json_file:
-            json.dump(data, json_file)
-    
-    # запись зарегистрированных модов
-    def writeModsInfo(self):
-        data = {}
-        with open(self.mods_registry, 'r+') as json_file:
-            data = json.load(json_file)
-        summary = []
-        for mod in self.modList:
-            summary.append(mod.hashID)
+            summary.append(mod.hashid)
         data['modsOrder'] = summary
         with open('game_data.json', 'w') as json_file:
             json.dump(data, json_file)
