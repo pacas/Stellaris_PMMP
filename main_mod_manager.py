@@ -84,7 +84,7 @@ class ModManager(QMainWindow):
         self.current_hover = [0, 0]
         # self.table.cellEntered.connect(self.cellHover)
         # ---modname------------------------
-        self.modname = QLabel('Информация о модификации', self.centralwidget)
+        self.modname = QLabel('Mod Title', self.centralwidget)
         self.modname.setMinimumSize(QSize(320, 100))
         newfont = QFont('Times', 18, QFont.Bold)
         self.modname.setFont(newfont)
@@ -104,7 +104,7 @@ class ModManager(QMainWindow):
         self.verticalLayout.addWidget(self.textBrowser, 0, Qt.AlignHCenter | Qt.AlignVCenter)
         # ---link button--------------------
         self.verticalLayout.addSpacerItem(QSpacerItem(0, 10, QSizePolicy.Fixed, QSizePolicy.Fixed))
-        self.linkButton = QPushButton('Открыть страницу в мастерской', self.centralwidget)
+        self.linkButton = QPushButton('Open in workshop', self.centralwidget)
         self.linkButton.setMinimumSize(QSize(300, 30))
         self.linkButton.setMaximumSize(QSize(300, 30))
         self.verticalLayout.addWidget(self.linkButton, 0, Qt.AlignHCenter | Qt.AlignVCenter)
@@ -194,7 +194,7 @@ class ModManager(QMainWindow):
                     version = data['requiredVersion']
                 except KeyError:
                     version = '---'
-                    with open(modID) as file:
+                    with open(self.mod_folder + modID) as file:
                         for text in file:
                             if 'version="' in text:
                                 text.strip()

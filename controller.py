@@ -8,12 +8,15 @@ import submenu_backups as backups
 import main_mod_manager as manager
 import sys
 import os
+import psutil
 
 
 class Controller(QWidget):
     def __init__(self):
         super().__init__()
         self.gamepath = ''
+        self.get_Disk_Links()
+        print(self.steam)
         self.first_Launch()
         self.show_Launcher()
         self.Launcher.modmanager.clicked.connect(self.show_ModManager)
@@ -43,16 +46,22 @@ class Controller(QWidget):
         self.Backups.show()
         
     def load_From_Backup_Connect(self):
-        index = self.Backups.table.selectionModel().selectedRows()
-        cell = self.Backups.table.item(index[0].row(), 0).text()
-        newModList = self.Backups.load_From_Backup(self.ModManager.modList, cell)
-        self.ModManager.dataDisplay(newModList)
+        try:
+            index = self.Backups.table.selectionModel().selectedRows()
+            cell = self.Backups.table.item(index[0].row(), 0).text()
+            newModList = self.Backups.load_From_Backup(self.ModManager.modList, cell)
+            self.ModManager.dataDisplay(newModList)
+        except IndexError:
+            pass
         
     def remove_Backup(self):
-        index = self.Backups.table.selectionModel().selectedRows()
-        cell = self.Backups.table.item(index[0].row(), 0).text()
-        os.remove('backup/' + cell + '.bak')
-        self.Backups.dataDisplay()
+        try:
+            index = self.Backups.table.selectionModel().selectedRows()
+            cell = self.Backups.table.item(index[0].row(), 0).text()
+            os.remove('backup/' + cell + '.bak')
+            self.Backups.dataDisplay()
+        except IndexError:
+            pass
     
     # добавить везде кнопки закрытия и убрать эту функцию
     def close_Launcher(self):
@@ -75,7 +84,7 @@ class Controller(QWidget):
     
     def first_Launch(self):
         try:
-            with open('laucher-settings.ini', 'r', encoding='UTF-8') as settings:
+            with open(self.steam + 'launcher-settings.ini', 'r', encoding='UTF-8') as settings:
                 data = settings.readline()
                 self.gamepath = data[14:]
         except FileNotFoundError:
@@ -89,6 +98,14 @@ class Controller(QWidget):
                     QMessageBox.about(self, "Warning", "Error")
             else:
                 QMessageBox.about(self, "Warning", "Enter valid name")
+
+    def get_Disk_Links(self):
+        self.steam = '/Steam/steamapps/common/Stellaris/'
+        disks = psutil.disk_partitions()
+        for disk in disks:
+            if os.path.exists(disk.device + self.steam) == True:
+                self.steam = disk.device + self.steam
+                break
 
 
 if __name__ == '__main__':

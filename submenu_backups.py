@@ -100,13 +100,13 @@ class Backups(QMainWindow):
     def dataDisplay(self):
         self.backups = self.load_Backup_List()
         self.table.setRowCount(0)
-        self.table.setRowCount(len(self.backups))
         labels = ['Name', 'Mod count', 'Creation time']  # добавить потом версию игры
         self.table.setHorizontalHeaderLabels(labels)
         for i in range(2):
             self.table.horizontalHeaderItem(i).setTextAlignment(Qt.AlignHCenter)
         counter = 0
         if len(self.backups) != 0:
+            self.table.setRowCount(len(self.backups))
             for back in self.backups:
                 with open(back, 'r', encoding='utf-8') as bfile:
                     data = bfile.readline()
