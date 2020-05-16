@@ -2,7 +2,7 @@
 #-*- coding:utf-8 -*-
 
 from PyQt5.QtWidgets import QMainWindow, QWidget, QSizePolicy, QLabel
-from PyQt5.QtWidgets import QGridLayout, QPushButton
+from PyQt5.QtWidgets import QGridLayout, QPushButton, QMessageBox
 from PyQt5.QtCore import QSize, QPoint
 from PyQt5.QtGui import QIcon, QImage, QPalette, QBrush, QFont
 import threading
@@ -46,18 +46,15 @@ class Launcher(QMainWindow):
         self.version = QLabel('0.2 alpha', self.centralwidget)
         p = self.geometry().bottomLeft() - self.version.geometry().bottomLeft() - QPoint(-10, 10)
         self.version.move(p)
-        #self.version.setAlignment(Qt.AlignLeft | Qt.AlignBottom)
         self.version.setStyleSheet('font-size: 14pt; color: #3a86de;')
-        # ---connect------------------------
-        self.launch.clicked.connect(lambda: self.gamestart())
-        # self.options.clicked.connect()
         # ----------------------------------
         self.setCentralWidget(self.centralwidget)
         
-    def gamestart(self):
+    def gamestart(self, game):
         try:
-            d = threading.Thread(name='daemon', target=os.startfile('stellaris.exe'))
+            d = threading.Thread(name='daemon', target=os.startfile(game))
             d.setDaemon(True)
             d.start()
-        except:
-            pass
+        except OSError as err:
+            QMessageBox.about(self, "Warning", "Error while launching game")
+            print("OS error: {0}".format(err))

@@ -1,17 +1,20 @@
 #!/usr/bin/python3
 #-*- coding:utf-8 -*-
 
-from PyQt5.QtWidgets import QApplication
+from PyQt5.QtWidgets import QApplication, QInputDialog, QLineEdit, QMessageBox, QWidget
 import main_launcher as launcher
 import submenu_options as options
 import submenu_backups as backups
-import current_version5 as manager
+import main_mod_manager as manager
 import sys
 import os
 
 
-class Controller:
+class Controller(QWidget):
     def __init__(self):
+        super().__init__()
+        self.gamepath = ''
+        self.first_Launch()
         self.show_Launcher()
         self.Launcher.modmanager.clicked.connect(self.show_ModManager)
         self.Launcher.options.clicked.connect(self.show_Options)
@@ -19,6 +22,7 @@ class Controller:
 
     def show_Launcher(self):
         self.Launcher = launcher.Launcher()
+        self.Launcher.launch.clicked.connect(lambda: self.Launcher.gamestart(self.gamepath + '\stellaris.exe'))
         self.Launcher.show()
 
     def show_ModManager(self):
@@ -32,19 +36,19 @@ class Controller:
     
     def show_Backups(self):
         self.Backups = backups.Backups()
-        self.Backups.make.clicked.connect(lambda: self.Backups.makeBackup(self.ModManager.modList))
-        self.Backups.load.clicked.connect(lambda: self.loadFromBackupConnect())
-        self.Backups.delete.clicked.connect(lambda: self.removeVackup())
+        self.Backups.make.clicked.connect(lambda: self.Backups.make_Backup(self.ModManager.modList))
+        self.Backups.load.clicked.connect(lambda: self.load_From_Backup_Connect())
+        self.Backups.delete.clicked.connect(lambda: self.remove_Backup())
         self.Backups.closew.clicked.connect(lambda: self.Backups.close())
         self.Backups.show()
         
-    def loadFromBackupConnect(self):
+    def load_From_Backup_Connect(self):
         index = self.Backups.table.selectionModel().selectedRows()
         cell = self.Backups.table.item(index[0].row(), 0).text()
-        newModList = self.Backups.loadFromBackup(self.ModManager.modList, cell)
+        newModList = self.Backups.load_From_Backup(self.ModManager.modList, cell)
         self.ModManager.dataDisplay(newModList)
         
-    def removeVackup(self):
+    def remove_Backup(self):
         index = self.Backups.table.selectionModel().selectedRows()
         cell = self.Backups.table.item(index[0].row(), 0).text()
         os.remove('backup/' + cell + '.bak')
@@ -68,6 +72,23 @@ class Controller:
             self.Backups.close()
         except AttributeError:
             pass
+    
+    def first_Launch(self):
+        try:
+            with open('laucher-settings.ini', 'r', encoding='UTF-8') as settings:
+                data = settings.readline()
+                self.gamepath = data[14:]
+        except FileNotFoundError:
+            QMessageBox.about(self, "Attention", "Please enter your game location in the next window (C:\Steam\steamapps\common\Stellaris as example)")
+            self.gamepath, okPressed = QInputDialog.getText(self, 'Attention', 'Game location:', QLineEdit.Normal, '')
+            if okPressed and self.gamepath != '':
+                try:
+                    with open(self.gamepath + '\laucher-settings.ini', 'w+', encoding='UTF-8') as settings:
+                        settings.write('game_location=' + self.gamepath)
+                except:
+                    QMessageBox.about(self, "Warning", "Error")
+            else:
+                QMessageBox.about(self, "Warning", "Enter valid name")
 
 
 if __name__ == '__main__':

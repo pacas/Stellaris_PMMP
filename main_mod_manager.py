@@ -3,13 +3,14 @@
 
 from PyQt5.QtWidgets import QAction, QMainWindow, QWidget, QSizePolicy, QLabel
 from PyQt5.QtWidgets import QTableWidget, QTableWidgetItem, QHBoxLayout, QVBoxLayout
-from PyQt5.QtWidgets import QPushButton, QHeaderView, QSpacerItem, QTextBrowser
-from PyQt5.QtCore import QSize, Qt
-from PyQt5.QtGui import QColor, QPixmap, QFont, QIcon
+from PyQt5.QtWidgets import QPushButton, QHeaderView, QSpacerItem, QTextBrowser, QMenu
+from PyQt5.QtCore import QSize, Qt, QEvent
+from PyQt5.QtGui import QColor, QPixmap, QFont, QIcon, QBrush
 import json
 import glob
-from os import listdir
+import os
 import webbrowser
+import psutil
 import feature_dnd as dnd
 
 def TestDiffBug():
@@ -20,7 +21,7 @@ def TestDiffBug():
     for i in globlist:
         i = i[len(mod_ugc) - 5:-4]
         descriptors.add(i)
-    folders = listdir(mod_folders)
+    folders = os.listdir(mod_folders)
     folders = set(folders)
     differ = descriptors.symmetric_difference(folders)
     return len(differ) == 0
@@ -47,15 +48,12 @@ class Mod():
 class ModManager(QMainWindow):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # ---definitions--------------------
-        self.dlc_load = 'dlc_load.json'
-        self.mods_registry = 'mods_registry.json'
-        self.mods_data = 'mods_data.json'
-        self.game_data = 'game_data.json'
-        # self.folder = 'backup'
-        self.url = 'https://steamcommunity.com/sharedfiles/filedetails/?id='
-        self.modsloc = 'M:/Steam/steamapps/workshop/content/281990/'
         # ----------------------------------
+        self.modList = list()
+        self.get_Disk_Links()
+        self.setupUI()
+
+    def setupUI(self):
         self.setMinimumSize(QSize(1200, 700))
         self.setWindowTitle('Mod Manager')
         self.setWindowIcon(QIcon('logo.png'))
@@ -76,6 +74,15 @@ class ModManager(QMainWindow):
         self.table.setMinimumSize(QSize(800, 300))
         self.horizontalLayout.addWidget(self.table, 0)
         self.verticalLayout = QVBoxLayout()
+        self.dataDisplay(self.modList)
+        self.table.cellDoubleClicked.connect(self.modSwitch)
+        self.table.cellClicked.connect(self.displayModData)
+        self.table.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.table.customContextMenuRequested.connect(self.generateMenu)
+        self.table.viewport().installEventFilter(self)
+        self.table.setMouseTracking(True)
+        self.current_hover = [0, 0]
+        # self.table.cellEntered.connect(self.cellHover)
         # ---modname------------------------
         self.modname = QLabel('Информация о модификации', self.centralwidget)
         self.modname.setMinimumSize(QSize(320, 100))
@@ -105,9 +112,6 @@ class ModManager(QMainWindow):
         self.horizontalLayout.addLayout(self.verticalLayout)
         self.setCentralWidget(self.centralwidget)
         # ----------------------------------
-        self.modList = []
-        self.getModData(self.mods_registry, self.dlc_load, self.game_data)
-        # ----------------------------------
         self.menu = self.menuBar()
         # ---program------------------------
         prMenu = self.menu.addMenu('&Program')
@@ -126,14 +130,27 @@ class ModManager(QMainWindow):
         orderMenu.addAction(orderACT)
         # ---backups------------------------
         backupMenu = self.menu.addMenu('&Backups')
-        # ----------------------------------
         self.openBackupMenu = QAction('Open backup menu', self)
         backupMenu.addAction(self.openBackupMenu)
         # ----------------------------------
-        self.dataDisplay(self.modList)
-        self.table.cellDoubleClicked.connect(self.onCellChanged)
-        self.table.cellClicked.connect(self.displayModData)
-
+    
+    def get_Disk_Links(self):
+        # ---definitions--------------------
+        self.steam = '/Steam/steamapps/workshop/content/281990/'
+        self.dlc_load = os.path.join(os.path.expanduser('~'), 'Documents', 'Paradox Interactive', 'Stellaris', 'dlc_load.json')
+        self.mods_registry = os.path.join(os.path.expanduser('~'), 'Documents', 'Paradox Interactive', 'Stellaris', 'mods_registry.json')
+        self.mods_data = os.path.join(os.path.expanduser('~'), 'Documents', 'Paradox Interactive', 'Stellaris', 'mods_data.json')
+        self.game_data = os.path.join(os.path.expanduser('~'), 'Documents', 'Paradox Interactive', 'Stellaris', 'game_data.json')
+        self.mod_folder = os.path.join(os.path.expanduser('~'), 'Documents', 'Paradox Interactive', 'Stellaris') + '/'
+        self.url = 'https://steamcommunity.com/sharedfiles/filedetails/?id='
+        disks = psutil.disk_partitions()
+        for disk in disks:
+            if os.path.exists(disk.device + self.steam) == True:
+                self.steam = disk.device + self.steam
+                break
+            # иначе уточнить путь сделать
+        self.getModData(self.mods_registry, self.dlc_load, self.game_data)
+        
     # получение описания мода из мастерской
     '''
     def getSteamDesc(self, mid):
@@ -144,7 +161,7 @@ class ModManager(QMainWindow):
         final = final[59:-6]
         self.textBrowser.setHtml(final)
     '''
-
+# ---------------------загрузка данных модификаций------------------------------------
     def printModPreview(self, image):
         self.tmp = QPixmap(image)
         self.tmp = self.tmp.scaled(256, 256, Qt.KeepAspectRatio)
@@ -232,8 +249,10 @@ class ModManager(QMainWindow):
         if self.realModList != []:
             self.newModsInfo()
 
+# ---------------------методы таблицы------------------------------------
     # обновление таблицы
     def dataDisplay(self, modList):
+        self.modList = modList
         self.table.setRowCount(0)
         self.table.setRowCount(len(modList))
         labels = ['Path', 'Name', 'Version', 'Source']
@@ -263,12 +282,11 @@ class ModManager(QMainWindow):
             counter += 1
 
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
-        self.table.resizeColumnsToContents()
 
-    def onCellChanged(self, row, column):
+    def modSwitch(self, row, column):
         self.retrieveData()
         clr = self.modList[row].isEnabled
-        if clr == 'no':
+        if clr == 0:
             for i in range(4):
                 self.table.item(row, i).setBackground(QColor.fromRgb(191, 245, 189))
             self.modList[row].isEnabled = 1
@@ -276,14 +294,51 @@ class ModManager(QMainWindow):
             for i in range(4):
                 self.table.item(row, i).setBackground(QColor('white'))
             self.modList[row].isEnabled = 0
+            
+    def modSwitchAll(self, tp):
+        self.retrieveData()
+        for i in range(len(self.modList)):
+            self.modList[i].isEnabled = tp
+            if tp == 0:
+                for j in range(4):
+                    self.table.item(i, j).setBackground(QColor('white'))
+            else:
+                for j in range(4):
+                    self.table.item(i, j).setBackground(QColor.fromRgb(191, 245, 189))
+    
+    # фильтрация эвентов ПКМ меню
+    def eventFilter(self, source, event):
+        if(event.type() == QEvent.MouseButtonPress and
+           event.buttons() == Qt.RightButton and
+           source is self.table.viewport()):
+            item = self.table.itemAt(event.pos())
+            if item is not None:
+                self.rcmenu = QMenu(self)
+                #-------------------one mod-------------------
+                enableMod = QAction('Enable / Disable', self)
+                enableMod.triggered.connect(lambda: self.modSwitch(item.row(), item.column()))
+                self.rcmenu.addAction(enableMod)
+                #-------------------all mods-enable-----------
+                enableAllMod = QAction('Enable all mods', self)
+                enableAllMod.triggered.connect(lambda: self.modSwitchAll(1))
+                self.rcmenu.addAction(enableAllMod)
+                #-------------------all mods-disable----------
+                disableAllMod = QAction('Disable all mods', self)
+                disableAllMod.triggered.connect(lambda: self.modSwitchAll(0))
+                self.rcmenu.addAction(disableAllMod)
+        return super(ModManager, self).eventFilter(source, event)
+    
+    def generateMenu(self, pos):
+        self.rcmenu.exec_(self.table.mapToGlobal(pos))
 
     def displayModData(self, row, column):
+        self.retrieveData()
         self.modname.setText(self.modList[row].name)
         preview = ''
         texttags = 'Tags:\n'
         self.linkButton.disconnect()
         self.linkButton.clicked.connect(lambda: webbrowser.open(self.url + str(self.modList[row].steamID)))
-        with open(self.modList[row].modID) as file:
+        with open(self.mod_folder + self.modList[row].modID) as file:
             for text in file:
                 if 'picture="' in text:
                     text.strip()
@@ -293,12 +348,24 @@ class ModManager(QMainWindow):
             self.printModPreview('mod/' + preview)
             self.linkButton.setVisible(0)
         else:
-            self.printModPreview(self.modsloc + self.modList[row].steamID + '/' + preview)
+            self.printModPreview(self.steam + self.modList[row].steamID + '/' + preview)
             self.linkButton.setVisible(1)
         for tag in self.modList[row].tags:
             texttags += tag
             texttags += '\n'
         self.textBrowser.setText(texttags)
+        
+    def cellHover(self, row, column):
+        item = self.table.item(row, column)
+        old_item = self.table.item(self.current_hover[0], self.current_hover[1])
+        if self.current_hover != [row,column]:
+            clr = self.modList[self.current_hover[0]].isEnabled
+            if clr == 0:
+                old_item.setBackground(QColor('white'))
+            else:
+                old_item.setBackground(QColor.fromRgb(191, 245, 189))
+            item.setBackground(QBrush(QColor('yellow')))
+        self.current_hover = [row, column]
 
     def retrieveData(self):
         modListNew = []
@@ -320,7 +387,7 @@ class ModManager(QMainWindow):
         self.writeLoadOrder()
         self.writeDisplayOrder()
 
-    # запись в файлы
+# ------------------------запись в файлы------------------------------------
     def createModList(self):
         allFile = dict()
         for mod in self.modList:
@@ -350,9 +417,6 @@ class ModManager(QMainWindow):
         with open(self.mods_data, 'w', encoding='utf-8') as f:
             f.writelines(lines)
 
-        # os.remove(self.mods_registry)
-        # copyfile(self.mods_data, self.mods_registry)
-
     # запись включённых модов
     def writeLoadOrder(self):
         data = {}
@@ -363,7 +427,7 @@ class ModManager(QMainWindow):
             if mod.isEnabled == 1:
                 summary.append(mod.modID)
         data['enabled_mods'] = summary
-        with open('dlc_load1.json', 'w') as json_file:
+        with open(self.dlc_load, 'w') as json_file:
             json.dump(data, json_file)
 
     # запись порядка загрузки
@@ -375,18 +439,5 @@ class ModManager(QMainWindow):
         for mod in self.modList:
             summary.append(mod.hashID)
         data['modsOrder'] = summary
-        with open('game_data1.json', 'w') as json_file:
-            json.dump(data, json_file)
-
-    # запись зарегистрированных модов
-    # сделать
-    def writeModsInfo(self):
-        data = {}
-        with open(self.mods_registry, 'r+') as json_file:
-            data = json.load(json_file)
-        summary = []
-        for mod in self.modList:
-            summary.append(mod.hashID)
-        data['modsOrder'] = summary
-        with open('game_data.json', 'w') as json_file:
+        with open(self.game_data, 'w') as json_file:
             json.dump(data, json_file)

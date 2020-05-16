@@ -57,7 +57,7 @@ class Backups(QMainWindow):
         self.setCentralWidget(self.centralwidget)
         self.dataDisplay()
         
-    def makeBackup(self, modList):
+    def make_Backup(self, modList):
         name, okPressed = QInputDialog.getText(self, "Get text","Backup name:", QLineEdit.Normal, "")
         if okPressed and name != '':
             if not os.path.exists(self.folder):
@@ -71,24 +71,24 @@ class Backups(QMainWindow):
         else:
             QMessageBox.about(self, "Warning", "Enter valid name")
 
-    def loadFromBackup(self, modList, name):
+    def load_From_Backup(self, modList, name):
         with open('backup/' + name + '.bak', 'r', encoding='utf-8') as bfile:
             data = bfile.readlines()
             modInfo = data[0].split(' ')
             modInfo.pop()
             newModList = []
-            for i in range(1, len(modInfo)):
-                a = modInfo[i].split(' ')
+            for i in range(1, len(data)):
+                a = data[i].split(' ')
                 for mod in modList:
                     if mod.modID == a[0]:
-                        mod.isEnabled = a[1]
+                        mod.isEnabled = int(a[1])
                         newModList.append(mod)
-                        modList.pop(mod)
+                        modList.remove(mod)
                         break
             finalModList = modList + newModList
             return finalModList
         
-    def loadBackupList(self):
+    def load_Backup_List(self):
         if not os.path.exists(self.folder):
             os.mkdir(self.folder)
             return None
@@ -98,7 +98,7 @@ class Backups(QMainWindow):
             return backups
             
     def dataDisplay(self):
-        self.backups = self.loadBackupList()
+        self.backups = self.load_Backup_List()
         self.table.setRowCount(0)
         self.table.setRowCount(len(self.backups))
         labels = ['Name', 'Mod count', 'Creation time']  # добавить потом версию игры
