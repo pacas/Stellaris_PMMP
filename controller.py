@@ -15,8 +15,6 @@ class Controller(QWidget):
     def __init__(self):
         super().__init__()
         self.gamepath = ''
-        self.get_Disk_Links()
-        print(self.steam)
         self.first_Launch()
         self.show_Launcher()
         self.Launcher.modmanager.clicked.connect(self.show_ModManager)
@@ -83,30 +81,40 @@ class Controller(QWidget):
             pass
     
     def first_Launch(self):
+        self.get_Disk_Links()
         try:
-            with open(self.steam + 'launcher-settings.ini', 'r', encoding='UTF-8') as settings:
+            with open('launcher-settings.ini', 'r', encoding='UTF-8') as settings:
                 data = settings.readline()
                 self.gamepath = data[14:]
         except FileNotFoundError:
-            QMessageBox.about(self, "Attention", "Please enter your game location in the next window (C:\Steam\steamapps\common\Stellaris as example)")
-            self.gamepath, okPressed = QInputDialog.getText(self, 'Attention', 'Game location:', QLineEdit.Normal, '')
-            if okPressed and self.gamepath != '':
-                try:
-                    with open(self.gamepath + '\laucher-settings.ini', 'w+', encoding='UTF-8') as settings:
-                        settings.write('game_location=' + self.gamepath)
-                except:
-                    QMessageBox.about(self, "Warning", "Error")
+            if self.check == 0:
+                QMessageBox.about(self, "Attention", "Please enter your game location in the next window (C:\Steam\steamapps\common\Stellaris as example)")
+                self.gamepath, okPressed = QInputDialog.getText(self, 'Attention', 'Game location:', QLineEdit.Normal, '')
+                if okPressed and self.gamepath != '':
+                    self.ini_Write(self.gamepath)
+                else:
+                    QMessageBox.about(self, "Warning", "Enter valid name")
+                    # зациклить на ожидание правильного ввода
+                    self.close_Launcher()
             else:
-                QMessageBox.about(self, "Warning", "Enter valid name")
+                self.ini_Write(self.steam)
 
     def get_Disk_Links(self):
         self.steam = '/Steam/steamapps/common/Stellaris/'
         disks = psutil.disk_partitions()
+        self.check = 0
         for disk in disks:
             if os.path.exists(disk.device + self.steam) == True:
                 self.steam = disk.device + self.steam
+                self.check = 1
                 break
-
+    
+    def ini_Write(self, path):
+        try:
+            with open('launcher-settings.ini', 'w+', encoding='UTF-8') as settings:
+                settings.write('game_location=' + path)
+        except:
+            QMessageBox.about(self, "Warning", "Error")
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)

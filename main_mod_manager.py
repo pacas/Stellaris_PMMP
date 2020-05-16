@@ -104,7 +104,7 @@ class ModManager(QMainWindow):
         self.verticalLayout.addWidget(self.textBrowser, 0, Qt.AlignHCenter | Qt.AlignVCenter)
         # ---link button--------------------
         self.verticalLayout.addSpacerItem(QSpacerItem(0, 10, QSizePolicy.Fixed, QSizePolicy.Fixed))
-        self.linkButton = QPushButton('Open in workshop', self.centralwidget)
+        self.linkButton = QPushButton('Open on workshop', self.centralwidget)
         self.linkButton.setMinimumSize(QSize(300, 30))
         self.linkButton.setMaximumSize(QSize(300, 30))
         self.verticalLayout.addWidget(self.linkButton, 0, Qt.AlignHCenter | Qt.AlignVCenter)
