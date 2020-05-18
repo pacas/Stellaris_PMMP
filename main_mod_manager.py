@@ -13,6 +13,7 @@ import webbrowser
 import psutil
 import feature_dnd as dnd
 
+
 def TestDiffBug():
     mod_ugc = 'C:/Users/User/Documents/Paradox Interactive/Stellaris/mod/ugc_*.mod'
     mod_folders = 'M:/Steam/steamapps/workshop/content/281990/'
@@ -25,6 +26,7 @@ def TestDiffBug():
     folders = set(folders)
     differ = descriptors.symmetric_difference(folders)
     return len(differ) == 0
+
 
 def sortedKey(mod):
     return mod.sortedKey
@@ -43,6 +45,7 @@ class Mod():
         self.archivePath = archivePath
         self.isEnabled = isEnabled
         self.sortedKey = name.encode('utf8', errors='ignore')
+
 
 # мод менеджер
 class ModManager(QMainWindow):
@@ -133,7 +136,7 @@ class ModManager(QMainWindow):
         self.openBackupMenu = QAction('Open backup menu', self)
         backupMenu.addAction(self.openBackupMenu)
         # ----------------------------------
-    
+
     def get_Disk_Links(self):
         # ---definitions--------------------
         self.steam = '/Steam/steamapps/workshop/content/281990/'
@@ -145,12 +148,12 @@ class ModManager(QMainWindow):
         self.url = 'https://steamcommunity.com/sharedfiles/filedetails/?id='
         disks = psutil.disk_partitions()
         for disk in disks:
-            if os.path.exists(disk.device + self.steam) == True:
+            if os.path.exists(disk.device + self.steam) is True:
                 self.steam = disk.device + self.steam
                 break
             # иначе уточнить путь сделать
         self.getModData(self.mods_registry, self.dlc_load, self.game_data)
-        
+
     # получение описания мода из мастерской
     '''
     def getSteamDesc(self, mid):
@@ -161,6 +164,7 @@ class ModManager(QMainWindow):
         final = final[59:-6]
         self.textBrowser.setHtml(final)
     '''
+
 # ---------------------загрузка данных модификаций------------------------------------
     def printModPreview(self, image):
         self.tmp = QPixmap(image)
@@ -294,7 +298,7 @@ class ModManager(QMainWindow):
             for i in range(4):
                 self.table.item(row, i).setBackground(QColor('white'))
             self.modList[row].isEnabled = 0
-            
+
     def modSwitchAll(self, tp):
         self.retrieveData()
         for i in range(len(self.modList)):
@@ -305,29 +309,27 @@ class ModManager(QMainWindow):
             else:
                 for j in range(4):
                     self.table.item(i, j).setBackground(QColor.fromRgb(191, 245, 189))
-    
+
     # фильтрация эвентов ПКМ меню
     def eventFilter(self, source, event):
-        if(event.type() == QEvent.MouseButtonPress and
-           event.buttons() == Qt.RightButton and
-           source is self.table.viewport()):
+        if(event.type() == QEvent.MouseButtonPress and event.buttons() == Qt.RightButton and source is self.table.viewport()):
             item = self.table.itemAt(event.pos())
             if item is not None:
                 self.rcmenu = QMenu(self)
-                #-------------------one mod-------------------
+                # -------------------one mod-------------------
                 enableMod = QAction('Enable / Disable', self)
                 enableMod.triggered.connect(lambda: self.modSwitch(item.row(), item.column()))
                 self.rcmenu.addAction(enableMod)
-                #-------------------all mods-enable-----------
+                # -------------------all mods-enable-----------
                 enableAllMod = QAction('Enable all mods', self)
                 enableAllMod.triggered.connect(lambda: self.modSwitchAll(1))
                 self.rcmenu.addAction(enableAllMod)
-                #-------------------all mods-disable----------
+                # -------------------all mods-disable----------
                 disableAllMod = QAction('Disable all mods', self)
                 disableAllMod.triggered.connect(lambda: self.modSwitchAll(0))
                 self.rcmenu.addAction(disableAllMod)
         return super(ModManager, self).eventFilter(source, event)
-    
+
     def generateMenu(self, pos):
         self.rcmenu.exec_(self.table.mapToGlobal(pos))
 
@@ -354,11 +356,11 @@ class ModManager(QMainWindow):
             texttags += tag
             texttags += '\n'
         self.textBrowser.setText(texttags)
-        
+
     def cellHover(self, row, column):
         item = self.table.item(row, column)
         old_item = self.table.item(self.current_hover[0], self.current_hover[1])
-        if self.current_hover != [row,column]:
+        if self.current_hover != [row, column]:
             clr = self.modList[self.current_hover[0]].isEnabled
             if clr == 0:
                 old_item.setBackground(QColor('white'))

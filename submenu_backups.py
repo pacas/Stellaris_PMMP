@@ -18,6 +18,7 @@ class BackupFile():
         self.count = count
         self.time = time
 
+
 class Backups(QMainWindow):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -56,9 +57,9 @@ class Backups(QMainWindow):
         # ----------------------------------
         self.setCentralWidget(self.centralwidget)
         self.dataDisplay()
-        
+
     def make_Backup(self, modList):
-        name, okPressed = QInputDialog.getText(self, "Get text","Backup name:", QLineEdit.Normal, "")
+        name, okPressed = QInputDialog.getText(self, "Get text", "Backup name:", QLineEdit.Normal, "")
         if okPressed and name != '':
             if not os.path.exists(self.folder):
                 os.mkdir(self.folder)
@@ -87,7 +88,7 @@ class Backups(QMainWindow):
                         break
             finalModList = modList + newModList
             return finalModList
-        
+
     def load_Backup_List(self):
         if not os.path.exists(self.folder):
             os.mkdir(self.folder)
@@ -96,7 +97,7 @@ class Backups(QMainWindow):
             template = 'backup/*.bak'
             backups = glob.glob(template)
             return backups
-            
+
     def dataDisplay(self):
         self.backups = self.load_Backup_List()
         self.table.setRowCount(0)

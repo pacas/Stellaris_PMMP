@@ -8,6 +8,7 @@ from PyQt5.QtGui import QIcon, QImage, QPalette, QBrush, QFont
 import threading
 import os
 
+
 class Launcher(QMainWindow):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -20,13 +21,13 @@ class Launcher(QMainWindow):
         self.centralwidget.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         self.gridLayout = QGridLayout(self.centralwidget)
         palette = QPalette()
-        palette.setBrush(QPalette.Window, QBrush(background))                        
+        palette.setBrush(QPalette.Window, QBrush(background))
         self.setPalette(palette)
         # ----------------------------------
         self.title = QLabel('Stellaris Launcher', self.centralwidget)
         self.launch = QPushButton('Launch Game', self.centralwidget)
         self.modmanager = QPushButton('Launch Mod Manager', self.centralwidget)
-        self.options = QPushButton('Game Options (not working)', self.centralwidget)
+        self.options = QPushButton('Game Options', self.centralwidget)
         self.exit = QPushButton('Exit', self.centralwidget)
         # ---layout-------------------------
         newfont = QFont('Times', 18, QFont.Bold)
@@ -43,13 +44,13 @@ class Launcher(QMainWindow):
         self.exit.setFixedSize(QSize(200, 70))
         self.gridLayout.addWidget(self.exit, 4, 0)
         # ---launcher-version---------------
-        self.version = QLabel('0.2 alpha', self.centralwidget)
+        self.version = QLabel('0.1 alpha', self.centralwidget)
         p = self.geometry().bottomLeft() - self.version.geometry().bottomLeft() - QPoint(-10, 10)
         self.version.move(p)
         self.version.setStyleSheet('font-size: 14pt; color: #3a86de;')
         # ----------------------------------
         self.setCentralWidget(self.centralwidget)
-        
+
     def gamestart(self, game):
         try:
             d = threading.Thread(name='daemon', target=os.startfile(game))

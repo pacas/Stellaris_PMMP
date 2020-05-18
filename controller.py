@@ -23,7 +23,7 @@ class Controller(QWidget):
 
     def show_Launcher(self):
         self.Launcher = launcher.Launcher()
-        self.Launcher.launch.clicked.connect(lambda: self.Launcher.gamestart(self.gamepath + '\stellaris.exe'))
+        self.Launcher.launch.clicked.connect(lambda: self.Launcher.gamestart(self.gamepath + '/stellaris.exe'))
         self.Launcher.show()
 
     def show_ModManager(self):
@@ -33,8 +33,9 @@ class Controller(QWidget):
 
     def show_Options(self):
         self.Options = options.Options()
+        self.Options.closew.clicked.connect(lambda: self.Options.close())
         self.Options.show()
-    
+
     def show_Backups(self):
         self.Backups = backups.Backups()
         self.Backups.make.clicked.connect(lambda: self.Backups.make_Backup(self.ModManager.modList))
@@ -42,7 +43,7 @@ class Controller(QWidget):
         self.Backups.delete.clicked.connect(lambda: self.remove_Backup())
         self.Backups.closew.clicked.connect(lambda: self.Backups.close())
         self.Backups.show()
-        
+
     def load_From_Backup_Connect(self):
         try:
             index = self.Backups.table.selectionModel().selectedRows()
@@ -51,7 +52,7 @@ class Controller(QWidget):
             self.ModManager.dataDisplay(newModList)
         except IndexError:
             pass
-        
+
     def remove_Backup(self):
         try:
             index = self.Backups.table.selectionModel().selectedRows()
@@ -60,7 +61,7 @@ class Controller(QWidget):
             self.Backups.dataDisplay()
         except IndexError:
             pass
-    
+
     # добавить везде кнопки закрытия и убрать эту функцию
     def close_Launcher(self):
         try:
@@ -79,7 +80,7 @@ class Controller(QWidget):
             self.Backups.close()
         except AttributeError:
             pass
-    
+
     def first_Launch(self):
         self.get_Disk_Links()
         try:
@@ -88,7 +89,7 @@ class Controller(QWidget):
                 self.gamepath = data[14:]
         except FileNotFoundError:
             if self.check == 0:
-                QMessageBox.about(self, "Attention", "Please enter your game location in the next window (C:\Steam\steamapps\common\Stellaris as example)")
+                QMessageBox.about(self, "Attention", "Please enter your game location in the next window (C:/Steam/steamapps/common/Stellaris as example)")
                 self.gamepath, okPressed = QInputDialog.getText(self, 'Attention', 'Game location:', QLineEdit.Normal, '')
                 if okPressed and self.gamepath != '':
                     self.ini_Write(self.gamepath)
@@ -104,17 +105,18 @@ class Controller(QWidget):
         disks = psutil.disk_partitions()
         self.check = 0
         for disk in disks:
-            if os.path.exists(disk.device + self.steam) == True:
+            if os.path.exists(disk.device + self.steam) is True:
                 self.steam = disk.device + self.steam
                 self.check = 1
                 break
-    
+
     def ini_Write(self, path):
         try:
             with open('launcher-settings.ini', 'w+', encoding='UTF-8') as settings:
                 settings.write('game_location=' + path)
-        except:
+        except FileNotFoundError:
             QMessageBox.about(self, "Warning", "Error")
+
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
