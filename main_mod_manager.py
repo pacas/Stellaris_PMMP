@@ -1,31 +1,16 @@
 #!/usr/bin/python3
 #-*- coding:utf-8 -*-
 
-from PyQt5.QtWidgets import QAction, QMainWindow, QWidget, QSizePolicy, QLabel
-from PyQt5.QtWidgets import QTableWidget, QTableWidgetItem, QHBoxLayout, QVBoxLayout
+from PyQt5.QtWidgets import QAction, QMainWindow, QWidget, QSizePolicy, QLabel, QInputDialog, QLineEdit
+from PyQt5.QtWidgets import QTableWidget, QTableWidgetItem, QHBoxLayout, QVBoxLayout, QMessageBox
 from PyQt5.QtWidgets import QPushButton, QHeaderView, QSpacerItem, QTextBrowser, QMenu
-from PyQt5.QtCore import QSize, Qt, QEvent
+from PyQt5.QtCore import QSize, QModelIndex, Qt, QEvent
 from PyQt5.QtGui import QColor, QPixmap, QFont, QIcon, QBrush
 import json
-import glob
 import os
 import webbrowser
 import psutil
 import feature_dnd as dnd
-
-
-def TestDiffBug():
-    mod_ugc = 'C:/Users/User/Documents/Paradox Interactive/Stellaris/mod/ugc_*.mod'
-    mod_folders = 'M:/Steam/steamapps/workshop/content/281990/'
-    descriptors = set()
-    globlist = glob.glob(mod_ugc)
-    for i in globlist:
-        i = i[len(mod_ugc) - 5:-4]
-        descriptors.add(i)
-    folders = os.listdir(mod_folders)
-    folders = set(folders)
-    differ = descriptors.symmetric_difference(folders)
-    return len(differ) == 0
 
 
 def sortedKey(mod):
@@ -119,7 +104,7 @@ class ModManager(QMainWindow):
         # ---program------------------------
         prMenu = self.menu.addMenu('&Program')
         dumpACT = QAction('Save load order', self)
-        # dumpACT.setShortcut('Ctrl+S')
+        dumpACT.setShortcut('Ctrl+S')
         dumpACT.triggered.connect(self.dumpLoadOrder)
         prMenu.addAction(dumpACT)
         # ---sorting------------------------
@@ -153,17 +138,6 @@ class ModManager(QMainWindow):
                 break
             # иначе уточнить путь сделать
         self.getModData(self.mods_registry, self.dlc_load, self.game_data)
-
-    # получение описания мода из мастерской
-    '''
-    def getSteamDesc(self, mid):
-        response = requests.get(self.url + mid)
-        soup = BeautifulSoup(response.text, 'html.parser')
-        text = soup.find(class_='workshopItemDescription')
-        final = str(text)
-        final = final[59:-6]
-        self.textBrowser.setHtml(final)
-    '''
 
 # ---------------------загрузка данных модификаций------------------------------------
     def printModPreview(self, image):
@@ -242,17 +216,6 @@ class ModManager(QMainWindow):
                     continue
         self.modList = newOrder
 
-    # удаление лишних модов в списке
-    def removeBadModInfo(self):
-        for mod in self.modList:
-            if mod.modID not in self.realModList:
-                # print('|', mod.name, '|', mod.modID, '|')
-                self.modList.remove(mod)
-            else:
-                self.realModList.remove(mod.modID)
-        if self.realModList != []:
-            self.newModsInfo()
-
 # ---------------------методы таблицы------------------------------------
     # обновление таблицы
     def dataDisplay(self, modList):
@@ -272,11 +235,11 @@ class ModManager(QMainWindow):
             self.table.setItem(counter, 1, QTableWidgetItem(mod.name))
             # ----------------------------------
             vs = QTableWidgetItem(mod.version)
-            vs.setTextAlignment(Qt.AlignHCenter)
+            vs.setTextAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
             self.table.setItem(counter, 2, vs)
             # ----------------------------------
             src = QTableWidgetItem(mod.source)
-            src.setTextAlignment(Qt.AlignHCenter)
+            src.setTextAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
             self.table.setItem(counter, 3, src)
             # ----------------------------------
             if mod.isEnabled == 1:
@@ -309,6 +272,24 @@ class ModManager(QMainWindow):
             else:
                 for j in range(4):
                     self.table.item(i, j).setBackground(QColor.fromRgb(191, 245, 189))
+    
+    def moveMod(self, row, column):
+        newpos, okPressed = QInputDialog.getText(self, '', 'Enter new position:', QLineEdit.Normal, '')
+        try:
+            newpos = int(newpos)
+            if okPressed and newpos >= 0 and newpos < len(self.modList):
+                if newpos > row:
+                    self.modList.insert(newpos, self.modList[row])
+                    self.modList.pop(row)
+                else:
+                    self.modList.insert(newpos, self.modList[row])
+                    self.modList.pop(row + 1)
+                self.retrieveData()
+                self.dataDisplay(self.modList)
+            else:
+                QMessageBox.about(self, "Error", "Invalid mod position")
+        except:
+            QMessageBox.about(self, "Error", "Invalid mod position")
 
     # фильтрация эвентов ПКМ меню
     def eventFilter(self, source, event):
@@ -328,6 +309,10 @@ class ModManager(QMainWindow):
                 disableAllMod = QAction('Disable all mods', self)
                 disableAllMod.triggered.connect(lambda: self.modSwitchAll(0))
                 self.rcmenu.addAction(disableAllMod)
+                # -------------------move mod------------------
+                mMod = QAction('Move mod to...', self)
+                mMod.triggered.connect(lambda: self.moveMod(item.row(), item.column()))
+                self.rcmenu.addAction(mMod)
         return super(ModManager, self).eventFilter(source, event)
 
     def generateMenu(self, pos):

@@ -9,6 +9,7 @@ import os
 import glob
 import datetime
 import feature_dnd as dnd
+import re
 
 
 class BackupFile():
@@ -59,8 +60,9 @@ class Backups(QMainWindow):
         self.dataDisplay()
 
     def make_Backup(self, modList):
+        regex = re.compile('[ @!#$%^&*"()<>?/\|}{~:]')
         name, okPressed = QInputDialog.getText(self, "Get text", "Backup name:", QLineEdit.Normal, "")
-        if okPressed and name != '':
+        if okPressed and name != '' and regex.search(name) == None:
             if not os.path.exists(self.folder):
                 os.mkdir(self.folder)
             with open('backup/' + name + '.bak', 'w+', encoding='utf-8') as bfile:
@@ -70,7 +72,7 @@ class Backups(QMainWindow):
                     bfile.write(mod.modID + ' ' + str(mod.isEnabled) + '\n')
             self.dataDisplay()
         else:
-            QMessageBox.about(self, "Warning", "Enter valid name")
+            QMessageBox.about(self, 'Warning', 'Enter valid name without symbols: \n @_!#$%^&*"()<>?/\|}{~: and whitespace')
 
     def load_From_Backup(self, modList, name):
         with open('backup/' + name + '.bak', 'r', encoding='utf-8') as bfile:

@@ -93,8 +93,9 @@ class Controller(QWidget):
                 self.gamepath, okPressed = QInputDialog.getText(self, 'Attention', 'Game location:', QLineEdit.Normal, '')
                 if okPressed and self.gamepath != '':
                     self.ini_Write(self.gamepath)
+                    QMessageBox.about(self, 'Warning', 'Attention, if this is your first launch of the mod manager,it is strongly recommended delete files dlc_load, game_data and mods_registry in your Documents/Paradox Interactive/Stellaris folder with making a backup of them and start default launcher once. After this YOU MUST ENABLE ALL MODS IN MODLIST! Do not ask me why. It`s just works. This will delete the boot order and the list of enabled mods, but can help to avoid many errors.')
                 else:
-                    QMessageBox.about(self, "Warning", "Enter valid name")
+                    QMessageBox.about(self, 'Warning', 'Enter valid name')
                     # зациклить на ожидание правильного ввода
                     self.close_Launcher()
             else:
