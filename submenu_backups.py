@@ -94,16 +94,16 @@ class Backups(QMainWindow):
     def load_Backup_List(self):
         if not os.path.exists(self.folder):
             os.mkdir(self.folder)
-            return None
+            backups = list()
         else:
             template = 'backup/*.bak'
             backups = glob.glob(template)
-            return backups
+        return backups
 
     def dataDisplay(self):
         self.backups = self.load_Backup_List()
         self.table.setRowCount(0)
-        labels = ['Name', 'Mod count', 'Creation time']  # добавить потом версию игры
+        labels = ['Name', 'Mod count', 'Creation time']
         self.table.setHorizontalHeaderLabels(labels)
         for i in range(2):
             self.table.horizontalHeaderItem(i).setTextAlignment(Qt.AlignHCenter)

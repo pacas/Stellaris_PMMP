@@ -74,12 +74,10 @@ class Options(QMainWindow):
         self.windowtype.setCurrentIndex(index)
         # ----------------------------------
         text = self.stList[4][4:-1] + 'x' + self.stList[5][4:-1]
-        print(text)
         index1 = self.wsize.findText(text, Qt.MatchFixedString)
         self.wsize.setCurrentIndex(index1)
         # ----------------------------------
         text = self.stList[1][12:-2].capitalize()
-        print(text)
         if text == 'Simp_chinese':
             index2 = self.lang.findText('Chinese', Qt.MatchFixedString)
         elif text == 'German':

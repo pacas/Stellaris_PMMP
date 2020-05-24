@@ -163,6 +163,7 @@ class ModManager(QMainWindow):
         self.idList = [mod.modID for mod in self.modList]
 
     def getModList(self, data):
+        # добавить предупреждение о битых модах
         for hashID, data in data.items():
             try:
                 name = data['displayName']
