@@ -28,4 +28,4 @@ Quick help:
 - Double click to switch mod state
 - Drag & Drop working
 - The manager uses the same files as the default launcher, so if there is an error in them, then it will not work too. Paradox, WHY?
-- You can ask for help anytime on [this discord server](https://discord.gg/ZWqQSe)
+- You can ask for help anytime on [this discord server](https://discord.gg/9JqvFrF)
