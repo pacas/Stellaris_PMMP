@@ -24,7 +24,7 @@ class Launcher(QMainWindow):
         palette.setBrush(QPalette.Window, QBrush(background))
         self.setPalette(palette)
         # ----------------------------------
-        self.title = QLabel('Stellaris Launcher', self.centralwidget)
+        self.title = QLabel(' Stellaris PMMP', self.centralwidget)
         self.launch = QPushButton('Launch Game', self.centralwidget)
         self.modmanager = QPushButton('Launch Mod Manager', self.centralwidget)
         self.options = QPushButton('Game Options', self.centralwidget)
@@ -44,7 +44,7 @@ class Launcher(QMainWindow):
         self.exit.setFixedSize(QSize(200, 70))
         self.gridLayout.addWidget(self.exit, 4, 0)
         # ---launcher-version---------------
-        self.version = QLabel('0.1 alpha', self.centralwidget)
+        self.version = QLabel('0.2 alpha', self.centralwidget)
         p = self.geometry().bottomLeft() - self.version.geometry().bottomLeft() - QPoint(-10, 10)
         self.version.move(p)
         self.version.setStyleSheet('font-size: 14pt; color: #3a86de;')

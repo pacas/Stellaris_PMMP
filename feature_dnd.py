@@ -6,8 +6,6 @@ from PyQt5.QtGui import QDropEvent
 from PyQt5.QtCore import Qt
 
 
-# таблица и метод для перетаскивания
-# https://stackoverflow.com/a/43789304/10817033
 class TableWidgetDragRows(QTableWidget):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -58,4 +56,3 @@ class TableWidgetDragRows(QTableWidget):
         elif rect.bottom() - pos.y() < margin:
             return True
         return rect.contains(pos, True) and not (int(self.model().flags(index)) & Qt.ItemIsDropEnabled) and pos.y() >= rect.center().y()
-# конец кода перетаскивания

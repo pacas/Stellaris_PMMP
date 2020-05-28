@@ -29,6 +29,7 @@ class Controller(QWidget):
     def show_ModManager(self):
         self.ModManager = manager.ModManager()
         self.ModManager.openBackupMenu.triggered.connect(self.show_Backups)
+        self.ModManager.set_Game_Location(self.gamepath)
         self.ModManager.show()
 
     def show_Options(self):

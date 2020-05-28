@@ -4,12 +4,11 @@
 from PyQt5.QtWidgets import QAction, QMainWindow, QWidget, QSizePolicy, QLabel, QInputDialog, QLineEdit
 from PyQt5.QtWidgets import QTableWidget, QTableWidgetItem, QHBoxLayout, QVBoxLayout, QMessageBox
 from PyQt5.QtWidgets import QPushButton, QHeaderView, QSpacerItem, QTextBrowser, QMenu
-from PyQt5.QtCore import QSize, QModelIndex, Qt, QEvent
+from PyQt5.QtCore import QSize, Qt, QEvent
 from PyQt5.QtGui import QColor, QPixmap, QFont, QIcon, QBrush
 import json
 import os
 import webbrowser
-import psutil
 import feature_dnd as dnd
 
 
@@ -99,7 +98,7 @@ class ModManager(QMainWindow):
         # ---finalizing---------------------
         self.horizontalLayout.addLayout(self.verticalLayout)
         self.setCentralWidget(self.centralwidget)
-        # ----------------------------------
+        # ---menu---------------------------
         self.menu = self.menuBar()
         # ---program------------------------
         prMenu = self.menu.addMenu('&Program')
@@ -107,6 +106,9 @@ class ModManager(QMainWindow):
         dumpACT.setShortcut('Ctrl+S')
         dumpACT.triggered.connect(self.dumpLoadOrder)
         prMenu.addAction(dumpACT)
+        helpACT = QAction('Help', self)
+        helpACT.triggered.connect(self.getHelp)
+        prMenu.addAction(helpACT)
         # ---sorting------------------------
         orderMenu = self.menu.addMenu('&Sorting')
         orderACT = QAction('Sort in alphabetical order', self)
@@ -118,26 +120,29 @@ class ModManager(QMainWindow):
         orderMenu.addAction(orderACT)
         # ---backups------------------------
         backupMenu = self.menu.addMenu('&Backups')
-        self.openBackupMenu = QAction('Open backup menu', self)
+        self.openBackupMenu = QAction('Open backups menu', self)
         backupMenu.addAction(self.openBackupMenu)
+        reload = QAction('Reload starting modlist', self)
+        reload.triggered.connect(self.reloadOrder)
+        backupMenu.addAction(reload)
         # ----------------------------------
 
     def get_Disk_Links(self):
         # ---definitions--------------------
-        self.steam = '/Steam/steamapps/workshop/content/281990/'
-        self.dlc_load = os.path.join(os.path.expanduser('~'), 'Documents', 'Paradox Interactive', 'Stellaris', 'dlc_load.json')
-        self.mods_registry = os.path.join(os.path.expanduser('~'), 'Documents', 'Paradox Interactive', 'Stellaris', 'mods_registry.json')
-        self.mods_data = os.path.join(os.path.expanduser('~'), 'Documents', 'Paradox Interactive', 'Stellaris', 'mods_data.json')
-        self.game_data = os.path.join(os.path.expanduser('~'), 'Documents', 'Paradox Interactive', 'Stellaris', 'game_data.json')
         self.mod_folder = os.path.join(os.path.expanduser('~'), 'Documents', 'Paradox Interactive', 'Stellaris') + '/'
+        self.dlc_load = self.mod_folder + 'dlc_load.json'
+        self.mods_registry = self.mod_folder + 'mods_registry.json'
+        self.mods_data = self.mod_folder + 'mods_data.json'
+        self.game_data = self.mod_folder + 'game_data.json'
         self.url = 'https://steamcommunity.com/sharedfiles/filedetails/?id='
-        disks = psutil.disk_partitions()
-        for disk in disks:
-            if os.path.exists(disk.device + self.steam) is True:
-                self.steam = disk.device + self.steam
-                break
-            # иначе уточнить путь сделать
         self.getModData(self.mods_registry, self.dlc_load, self.game_data)
+        self.modListBackup = self.modList
+    
+    def set_Game_Location(self, path):
+        try:
+            self.steam = path[:path.find('steamapps') + 10] + 'workshop/content/281990/'
+        except:
+            self.steam = ''
 
 # ---------------------загрузка данных модификаций------------------------------------
     def printModPreview(self, image):
@@ -156,14 +161,12 @@ class ModManager(QMainWindow):
             data = json.load(loadOrder)
             self.getLoadList(data)
         # ----------------------------------
-        # добавить проверку на первый запуск через  файл настроек
         with open(g, encoding='UTF-8') as dataOrder:
             data = json.load(dataOrder)
             self.getDisplayList(data)
         self.idList = [mod.modID for mod in self.modList]
 
     def getModList(self, data):
-        # добавить предупреждение о битых модах
         for hashID, data in data.items():
             try:
                 name = data['displayName']
@@ -216,6 +219,11 @@ class ModManager(QMainWindow):
                     newOrder.append(j)
                     continue
         self.modList = newOrder
+    
+    def reloadOrder(self):
+        self.modList = self.modListBackup
+        self.idList = [mod.modID for mod in self.modList]
+        self.dataDisplay(self.modList)
 
 # ---------------------методы таблицы------------------------------------
     # обновление таблицы
@@ -273,24 +281,38 @@ class ModManager(QMainWindow):
             else:
                 for j in range(4):
                     self.table.item(i, j).setBackground(QColor.fromRgb(191, 245, 189))
-    
-    def moveMod(self, row, column):
-        newpos, okPressed = QInputDialog.getText(self, '', 'Enter new position:', QLineEdit.Normal, '')
-        try:
-            newpos = int(newpos)
-            if okPressed and newpos >= 0 and newpos < len(self.modList):
-                if newpos > row:
-                    self.modList.insert(newpos, self.modList[row])
-                    self.modList.pop(row)
+
+    def moveMod(self, row, column, tp):
+        if tp == 0:
+            newpos, okPressed = QInputDialog.getText(self, '', 'Enter new position:', QLineEdit.Normal, '')
+            try:
+                newpos = int(newpos)
+                if okPressed and newpos >= 0 and newpos < len(self.modList):
+                    if newpos > row:
+                        self.modList.insert(newpos, self.modList[row])
+                        self.modList.pop(row)
+                    else:
+                        self.modList.insert(newpos, self.modList[row])
+                        self.modList.pop(row + 1)
+                    self.retrieveData()
+                    self.dataDisplay(self.modList)
                 else:
-                    self.modList.insert(newpos, self.modList[row])
-                    self.modList.pop(row + 1)
-                self.retrieveData()
-                self.dataDisplay(self.modList)
-            else:
+                    QMessageBox.about(self, "Error", "Invalid mod position")
+            except:
                 QMessageBox.about(self, "Error", "Invalid mod position")
-        except:
-            QMessageBox.about(self, "Error", "Invalid mod position")
+        elif tp == 1 and row != 0:
+            self.modList.insert(0, self.modList[row])
+            self.modList.pop(row + 1)
+            self.retrieveData()
+            self.dataDisplay(self.modList)
+        elif tp == 2 and row != len(self.modList):
+            self.modList.insert(len(self.modList), self.modList[row])
+            self.modList.pop(row)
+            self.retrieveData()
+            self.dataDisplay(self.modList)
+        else:
+            pass
+            
 
     # фильтрация эвентов ПКМ меню
     def eventFilter(self, source, event):
@@ -298,6 +320,18 @@ class ModManager(QMainWindow):
             item = self.table.itemAt(event.pos())
             if item is not None:
                 self.rcmenu = QMenu(self)
+                # -------------------move mod------------------
+                mMod = QAction('Move to...', self)
+                mMod.triggered.connect(lambda: self.moveMod(item.row(), item.column(), 0))
+                self.rcmenu.addAction(mMod)
+                # -------------------move mod------------------
+                mMod = QAction('Move - top', self)
+                mMod.triggered.connect(lambda: self.moveMod(item.row(), item.column(), 1))
+                self.rcmenu.addAction(mMod)
+                # -------------------move mod------------------
+                mMod = QAction('Move - bottom', self)
+                mMod.triggered.connect(lambda: self.moveMod(item.row(), item.column(), 2))
+                self.rcmenu.addAction(mMod)
                 # -------------------one mod-------------------
                 enableMod = QAction('Enable / Disable', self)
                 enableMod.triggered.connect(lambda: self.modSwitch(item.row(), item.column()))
@@ -310,10 +344,7 @@ class ModManager(QMainWindow):
                 disableAllMod = QAction('Disable all mods', self)
                 disableAllMod.triggered.connect(lambda: self.modSwitchAll(0))
                 self.rcmenu.addAction(disableAllMod)
-                # -------------------move mod------------------
-                mMod = QAction('Move mod to...', self)
-                mMod.triggered.connect(lambda: self.moveMod(item.row(), item.column()))
-                self.rcmenu.addAction(mMod)
+                
         return super(ModManager, self).eventFilter(source, event)
 
     def generateMenu(self, pos):
@@ -333,10 +364,10 @@ class ModManager(QMainWindow):
                     preview = text[9:-2]
                     break
         if self.modList[row].source == 'local':
-            self.printModPreview('mod/' + preview)
+            self.printModPreview(self.modList[row].dirPath + '\\' + preview)
             self.linkButton.setVisible(0)
         else:
-            self.printModPreview(self.steam + self.modList[row].steamID + '/' + preview)
+            self.printModPreview(self.steam + self.modList[row].steamID + '\\' + preview)
             self.linkButton.setVisible(1)
         for tag in self.modList[row].tags:
             texttags += tag
@@ -374,6 +405,9 @@ class ModManager(QMainWindow):
         self.retrieveData()
         self.writeLoadOrder()
         self.writeDisplayOrder()
+        
+    def getHelp(self):
+        QMessageBox.about(self, 'Quick help', ' - RMB menu enabled\n - Double click to switch mod state\n - Drag & Drop working\n - The manager uses the same files as the default launcher, so if there is an error in them, then it will not work too. Paradox, WHY?\n - You can ask for help anytime on manager channel on Discord server "Stellaris Modding Den"')
 
 # ------------------------запись в файлы------------------------------------
     def createModList(self):
