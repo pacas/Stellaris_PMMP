@@ -11,6 +11,7 @@ import os
 import webbrowser
 import feature_dnd as dnd
 import platform
+import subprocess
 
 
 def sortedKey(mod):
@@ -45,6 +46,8 @@ class ModManager(QMainWindow):
         self.setMinimumSize(QSize(1200, 700))
         self.setWindowTitle('Mod Manager')
         self.setWindowIcon(QIcon('logo.png'))
+        self.steamIcon = QPixmap('steam.png')
+        self.localIcon = QPixmap('local.png')
         # ---central widget----------------
         self.centralwidget = QWidget(self)
         self.horizontalLayout = QHBoxLayout(self.centralwidget)
@@ -57,7 +60,8 @@ class ModManager(QMainWindow):
         self.header.setSectionResizeMode(0, QHeaderView.ResizeToContents)
         self.header.setSectionResizeMode(1, QHeaderView.Stretch)
         self.header.setSectionResizeMode(2, QHeaderView.ResizeToContents)
-        self.header.setSectionResizeMode(3, QHeaderView.ResizeToContents)
+        # self.header.setSectionResizeMode(3, QHeaderView.ResizeToContents)
+        self.table.setColumnWidth(3, 20)
         self.table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.table.setMinimumSize(QSize(800, 300))
         self.horizontalLayout.addWidget(self.table, 0)
@@ -270,7 +274,7 @@ class ModManager(QMainWindow):
         self.modList = modList
         self.table.setRowCount(0)
         self.table.setRowCount(len(modList))
-        labels = ['Path', 'Name', 'Version', 'Source']
+        labels = ['Path', 'Name', 'Version', 'Type']
         self.table.setHorizontalHeaderLabels(labels)
         for i in range(3):
             self.table.horizontalHeaderItem(i).setTextAlignment(Qt.AlignHCenter)
@@ -286,9 +290,13 @@ class ModManager(QMainWindow):
             vs.setTextAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
             self.table.setItem(counter, 2, vs)
             # ----------------------------------
-            src = QTableWidgetItem(mod.source)
-            src.setTextAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
-            self.table.setItem(counter, 3, src)
+            image = QTableWidgetItem()
+            if mod.source == 'steam':
+                image.setData(Qt.DecorationRole, self.steamIcon)
+            else:
+                image.setData(Qt.DecorationRole, self.localIcon)
+            image.setTextAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
+            self.table.setItem(counter, 3, image)
             # ----------------------------------
             if mod.isEnabled == 1:
                 for i in range(4):
