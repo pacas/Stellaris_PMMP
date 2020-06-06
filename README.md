@@ -12,7 +12,7 @@ Launcher preview:
  
 Mod manager preview: 
  
-![Mod Manager Preview](https://i.imgur.com/Lm1LSjw.png)
+![Mod Manager Preview](https://i.imgur.com/iYyodx7.png)
  
 All the main functions of the default launcher are included, and at the moment, in addition to this, there is:
 * Moving a mod by index
