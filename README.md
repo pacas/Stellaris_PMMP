@@ -1,12 +1,19 @@
 # Alternative Stellaris launcher with advanced mod manager for Stellaris v2.4+
-![Mod Manager Preview](https://i.imgur.com/Lm1LSjw.png)
-Greetings to all, this is the channel of the PMMP mod manager.
-This mod manager with a built-in launcher has a very simple design with advanced functionality (but still WIP, more coming soon).
-
+Greetings to all, this is the github rep of the PMMP mod manager.
+This mod manager with a built-in launcher has a very simple design with advanced functionality.
+ 
 Download installer [here](https://github.com/pacas/Stellaris_PMMP/releases)
-
+ 
 If you have Python 3 installed, you can use the script version (PyQt5 and psutil required)
 
+Launcher preview: 
+ 
+![Launcher Preview](https://i.imgur.com/8ABNY4B.png)
+ 
+Mod manager preview: 
+ 
+![Mod Manager Preview](https://i.imgur.com/Lm1LSjw.png)
+ 
 All the main functions of the default launcher are included, and at the moment, in addition to this, there is:
 * Moving a mod by index
 * Backups system
