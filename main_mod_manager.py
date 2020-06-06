@@ -10,6 +10,7 @@ import json
 import os
 import webbrowser
 import feature_dnd as dnd
+import platform
 
 
 def sortedKey(mod):
@@ -72,7 +73,7 @@ class ModManager(QMainWindow):
         # self.table.cellEntered.connect(self.cellHover)
         # ---modname------------------------
         self.modname = QLabel('Mod Title', self.centralwidget)
-        self.modname.setMinimumSize(QSize(320, 100))
+        self.modname.setMinimumSize(QSize(320, 70))
         newfont = QFont('Times', 18, QFont.Bold)
         self.modname.setFont(newfont)
         self.modname.setWordWrap(True)
@@ -82,51 +83,75 @@ class ModManager(QMainWindow):
         self.pic = QLabel()
         self.printModPreview(None)
         self.verticalLayout.addWidget(self.pic, 0, Qt.AlignHCenter | Qt.AlignVCenter)
-        self.verticalLayout.addSpacerItem(QSpacerItem(0, 10, QSizePolicy.Fixed, QSizePolicy.Fixed))
+        self.verticalLayout.addSpacerItem(QSpacerItem(20, 20, QSizePolicy.Fixed, QSizePolicy.Fixed))
         # ---mod description----------------
         self.textBrowser = QTextBrowser(self.centralwidget)
-        self.textBrowser.setMaximumSize(QSize(550, 40000))
+        # self.textBrowser.setMinimumSize(QSize(280, 290))
         newfont = QFont('Verdana', 13, QFont.Bold)
         self.textBrowser.setFont(newfont)
         self.verticalLayout.addWidget(self.textBrowser, 0, Qt.AlignHCenter | Qt.AlignVCenter)
         # ---link button--------------------
-        self.verticalLayout.addSpacerItem(QSpacerItem(0, 10, QSizePolicy.Fixed, QSizePolicy.Fixed))
-        self.linkButton = QPushButton('Open on workshop', self.centralwidget)
+        self.verticalLayout.addSpacerItem(QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding))
+        self.linkButton = QPushButton('Open in browser', self.centralwidget)
         self.linkButton.setMinimumSize(QSize(300, 30))
         self.linkButton.setMaximumSize(QSize(300, 30))
         self.verticalLayout.addWidget(self.linkButton, 0, Qt.AlignHCenter | Qt.AlignVCenter)
+        # -------------
+        self.linkSteamButton = QPushButton('Open on steam', self.centralwidget)
+        self.linkSteamButton.setMinimumSize(QSize(300, 30))
+        self.linkSteamButton.setMaximumSize(QSize(300, 30))
+        self.verticalLayout.addWidget(self.linkSteamButton, 0, Qt.AlignHCenter | Qt.AlignVCenter)
+        self.verticalLayout.addSpacerItem(QSpacerItem(30, 30, QSizePolicy.Fixed, QSizePolicy.Fixed))
         # ---finalizing---------------------
         self.horizontalLayout.addLayout(self.verticalLayout)
         self.setCentralWidget(self.centralwidget)
         # ---menu---------------------------
         self.menu = self.menuBar()
-        # ---program------------------------
         prMenu = self.menu.addMenu('&Program')
+        orderMenu = self.menu.addMenu('&Sorting')
+        self.foldersMenu = self.menu.addMenu('&Folders')
+        backupMenu = self.menu.addMenu('&Backups')
+        # ---program------------------------
         dumpACT = QAction('Save load order', self)
         dumpACT.setShortcut('Ctrl+S')
         dumpACT.triggered.connect(self.dumpLoadOrder)
         prMenu.addAction(dumpACT)
+        # -------------
         helpACT = QAction('Help', self)
         helpACT.triggered.connect(self.getHelp)
         prMenu.addAction(helpACT)
+        # -------------
+        self.exitACT = QAction('Exit', self)
+        prMenu.addAction(self.exitACT)
         # ---sorting------------------------
-        orderMenu = self.menu.addMenu('&Sorting')
         orderACT = QAction('Sort in alphabetical order', self)
         orderACT.triggered.connect(lambda: self.sortByType(True))
         orderMenu.addAction(orderACT)
-        # ----------------------------------
+        # -------------
         orderACT = QAction('Sort in reverse alphabetical order', self)
         orderACT.triggered.connect(lambda: self.sortByType(False))
         orderMenu.addAction(orderACT)
+        # ---folders------------------------
+        gameFolder = QAction('Open game folder', self)
+        gameFolder.triggered.connect(lambda: self.folders_Opener(self.gamepath))
+        self.foldersMenu.addAction(gameFolder)
+        # -------------
+        docsFolder = QAction('Open game docs folder', self)
+        docsFolder.triggered.connect(lambda: self.folders_Opener(self.mod_folder))
+        self.foldersMenu.addAction(docsFolder)
+        # -------------
+        localModsFolder = QAction('Open local mods folder', self)
+        localModsFolder.triggered.connect(lambda: self.folders_Opener(self.mod_folder + 'mod/'))
+        self.foldersMenu.addAction(localModsFolder)
         # ---backups------------------------
-        backupMenu = self.menu.addMenu('&Backups')
         self.openBackupMenu = QAction('Open backups menu', self)
         backupMenu.addAction(self.openBackupMenu)
+        # -------------
         reload = QAction('Reload starting modlist', self)
         reload.triggered.connect(self.reloadOrder)
         backupMenu.addAction(reload)
-        # ----------------------------------
 
+# ---------------------установка путей игры и работа с ними---------------------------
     def get_Disk_Links(self):
         # ---definitions--------------------
         self.mod_folder = os.path.join(os.path.expanduser('~'), 'Documents', 'Paradox Interactive', 'Stellaris') + '/'
@@ -135,14 +160,28 @@ class ModManager(QMainWindow):
         self.mods_data = self.mod_folder + 'mods_data.json'
         self.game_data = self.mod_folder + 'game_data.json'
         self.url = 'https://steamcommunity.com/sharedfiles/filedetails/?id='
+        self.steam_url = 'steam://url/CommunityFilePage/'
         self.getModData(self.mods_registry, self.dlc_load, self.game_data)
         self.modListBackup = self.modList
     
     def set_Game_Location(self, path):
+        self.gamepath = path
         try:
             self.steam = path[:path.find('steamapps') + 10] + 'workshop/content/281990/'
         except:
             self.steam = ''
+        if self.steam != '':
+            steamModsFolder = QAction('Open steam mods folder', self)
+            steamModsFolder.triggered.connect(lambda: self.folders_Opener(self.steam))
+            self.foldersMenu.addAction(steamModsFolder)
+    
+    def folders_Opener(self, path):
+        if platform.system() == "Windows":
+            os.startfile(path)
+        elif platform.system() == "Darwin":
+            subprocess.Popen(["open", path])
+        else:
+            subprocess.Popen(["xdg-open", path])
 
 # ---------------------загрузка данных модификаций------------------------------------
     def printModPreview(self, image):
@@ -198,7 +237,7 @@ class ModManager(QMainWindow):
                 mod = Mod(hashID, name, modID, version, tags, source, steamID, dirPath, archivePath, isEnabled=0)
                 self.modList.append(mod)
             except KeyError:
-                print('key not found in ', name)
+                print('broken mod -', name)
 
     # получение текущего списка загрузки (включённые моды)
     def getLoadList(self, data):
@@ -356,7 +395,9 @@ class ModManager(QMainWindow):
         preview = ''
         texttags = 'Tags:\n'
         self.linkButton.disconnect()
+        self.linkSteamButton.disconnect()
         self.linkButton.clicked.connect(lambda: webbrowser.open(self.url + str(self.modList[row].steamID)))
+        self.linkSteamButton.clicked.connect(lambda: webbrowser.open(self.steam_url + str(self.modList[row].steamID)))
         with open(self.mod_folder + self.modList[row].modID) as file:
             for text in file:
                 if 'picture="' in text:
@@ -366,13 +407,16 @@ class ModManager(QMainWindow):
         if self.modList[row].source == 'local':
             self.printModPreview(self.modList[row].dirPath + '\\' + preview)
             self.linkButton.setVisible(0)
+            self.linkSteamButton.setVisible(0)
         else:
             self.printModPreview(self.steam + self.modList[row].steamID + '\\' + preview)
             self.linkButton.setVisible(1)
+            self.linkSteamButton.setVisible(1)
         for tag in self.modList[row].tags:
             texttags += tag
             texttags += '\n'
         self.textBrowser.setText(texttags)
+        self.textBrowser.setMinimumSize(QSize(280, 35 + len(self.modList[row].tags) * 25))
 
     def cellHover(self, row, column):
         item = self.table.item(row, column)

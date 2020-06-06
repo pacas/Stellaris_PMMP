@@ -91,15 +91,6 @@ class Options(QMainWindow):
         self.lang.setCurrentIndex(index2)
         # ----------------------------------
 
-        '''
-        язык       i = 1
-        8 вариантов
-        разрешение i = 4,5,9,10
-        16 вариантов
-        fullscreen i = 16
-        borderless i = 17
-        '''
-
     def displayChange(self, d):
         if d == 0:
             self.stList[16] = '\tfullScreen=yes\n'

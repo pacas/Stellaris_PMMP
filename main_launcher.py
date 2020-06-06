@@ -57,5 +57,5 @@ class Launcher(QMainWindow):
             d.setDaemon(True)
             d.start()
         except OSError as err:
-            QMessageBox.about(self, "Warning", "Error while launching game")
+            QMessageBox.about(self, "Warning", "Error occurred while launching game")
             print("OS error: {0}".format(err))
