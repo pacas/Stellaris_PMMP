@@ -19,13 +19,13 @@ All the main functions of the default launcher are included, and at the moment, 
 * Backups system
 * Additional information for mods
 * Fast way to open mod page on Steam Workshop
+* Menu for opening game directories
+* More mods moving options
 
 Features under development:
 * Help menu
 * Mod filter (search)
-* Menu for opening directories - game, paradox folder in documents and folder with mods installed from Steam
 * Additional error protection
-* More mods moving options
 * Multilanguage support
 * (maybe) Themes support
 
