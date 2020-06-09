@@ -23,14 +23,13 @@ All the main functions of the default launcher are included, and at the moment, 
 * More mods moving options
 
 Features under development:
-* Help menu
-* Mod filter (search)
 * Additional error protection
 * Multilanguage support
 * (maybe) Themes support
 
 
 Quick help:
+- Save load order with Ctrl+S or with Program/Save load order
 - RMB menu enabled
 - Double click to switch mod state
 - Drag & Drop working
