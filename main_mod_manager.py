@@ -4,7 +4,7 @@
 from PyQt5.QtWidgets import QAction, QMainWindow, QWidget, QSizePolicy, QLabel, QInputDialog, QLineEdit
 from PyQt5.QtWidgets import QTableWidget, QTableWidgetItem, QHBoxLayout, QVBoxLayout, QMessageBox
 from PyQt5.QtWidgets import QPushButton, QHeaderView, QSpacerItem, QTextBrowser, QMenu
-from PyQt5.QtCore import QSize, Qt, QEvent
+from PyQt5.QtCore import QSize, Qt, QEvent, pyqtSlot
 from PyQt5.QtGui import QColor, QPixmap, QFont, QIcon, QBrush
 import json
 import os
@@ -38,19 +38,24 @@ class ModManager(QMainWindow):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # ----------------------------------
-        self.modList = list()
         self.get_Disk_Links()
+        self.modList = list()
+        self.steamIcon = QPixmap('steam.png')
+        self.localIcon = QPixmap('local.png')
+        self.filterList = list()    
+        self.getModData(self.mods_registry, self.dlc_load, self.game_data)
+        self.modListBackup = self.modList
         self.setupUI()
 
     def setupUI(self):
         self.setMinimumSize(QSize(1200, 700))
         self.setWindowTitle('Mod Manager')
         self.setWindowIcon(QIcon('logo.png'))
-        self.steamIcon = QPixmap('steam.png')
-        self.localIcon = QPixmap('local.png')
         # ---central widget----------------
         self.centralwidget = QWidget(self)
         self.horizontalLayout = QHBoxLayout(self.centralwidget)
+        self.additionalLayout = QVBoxLayout()
+        self.filterLayout = QHBoxLayout()
         self.centralwidget.setMinimumSize(QSize(1200, 700))
         self.centralwidget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         # ---table widget-------------------
@@ -64,7 +69,8 @@ class ModManager(QMainWindow):
         self.table.setColumnWidth(3, 20)
         self.table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.table.setMinimumSize(QSize(800, 300))
-        self.horizontalLayout.addWidget(self.table, 0)
+        self.additionalLayout.addWidget(self.table, 0)
+        # self.horizontalLayout.addWidget(self.table, 0)
         self.verticalLayout = QVBoxLayout()
         self.dataDisplay(self.modList)
         self.table.cellDoubleClicked.connect(self.modSwitch)
@@ -75,6 +81,17 @@ class ModManager(QMainWindow):
         self.table.setMouseTracking(True)
         self.current_hover = [0, 0]
         # self.table.cellEntered.connect(self.cellHover)
+        # ---filter-------------------------
+        self.filterLabel = QLabel('Search:', self.centralwidget)
+        self.filterLine = QLineEdit('', self.centralwidget)
+        self.filterLine.textChanged.connect(self.on_textChanged)
+        self.filterClean = QPushButton('Clean', self.centralwidget)
+        self.filterClean.clicked.connect(lambda: self.filterLine.setText(''))
+        self.filterClean.setMaximumSize(QSize(75, 30))
+        self.additionalLayout.addLayout(self.filterLayout)
+        self.filterLayout.addWidget(self.filterLabel, 0)
+        self.filterLayout.addWidget(self.filterLine, 1)
+        self.filterLayout.addWidget(self.filterClean, 2)
         # ---modname------------------------
         self.modname = QLabel('Mod Title', self.centralwidget)
         self.modname.setMinimumSize(QSize(320, 70))
@@ -107,6 +124,7 @@ class ModManager(QMainWindow):
         self.verticalLayout.addWidget(self.linkSteamButton, 0, Qt.AlignHCenter | Qt.AlignVCenter)
         self.verticalLayout.addSpacerItem(QSpacerItem(30, 30, QSizePolicy.Fixed, QSizePolicy.Fixed))
         # ---finalizing---------------------
+        self.horizontalLayout.addLayout(self.additionalLayout)
         self.horizontalLayout.addLayout(self.verticalLayout)
         self.setCentralWidget(self.centralwidget)
         # ---menu---------------------------
@@ -132,9 +150,9 @@ class ModManager(QMainWindow):
         orderACT.triggered.connect(lambda: self.sortByType(True))
         orderMenu.addAction(orderACT)
         # -------------
-        orderACT = QAction('Sort in reverse alphabetical order', self)
-        orderACT.triggered.connect(lambda: self.sortByType(False))
-        orderMenu.addAction(orderACT)
+        order1ACT = QAction('Sort in reverse alphabetical order', self)
+        order1ACT.triggered.connect(lambda: self.sortByType(False))
+        orderMenu.addAction(order1ACT)
         # ---folders------------------------
         gameFolder = QAction('Open game folder', self)
         gameFolder.triggered.connect(lambda: self.folders_Opener(self.gamepath))
@@ -157,7 +175,6 @@ class ModManager(QMainWindow):
 
 # ---------------------установка путей игры и работа с ними---------------------------
     def get_Disk_Links(self):
-        # ---definitions--------------------
         self.mod_folder = os.path.join(os.path.expanduser('~'), 'Documents', 'Paradox Interactive', 'Stellaris') + '/'
         self.dlc_load = self.mod_folder + 'dlc_load.json'
         self.mods_registry = self.mod_folder + 'mods_registry.json'
@@ -165,8 +182,6 @@ class ModManager(QMainWindow):
         self.game_data = self.mod_folder + 'game_data.json'
         self.url = 'https://steamcommunity.com/sharedfiles/filedetails/?id='
         self.steam_url = 'steam://url/CommunityFilePage/'
-        self.getModData(self.mods_registry, self.dlc_load, self.game_data)
-        self.modListBackup = self.modList
     
     def set_Game_Location(self, path):
         self.gamepath = path
@@ -393,6 +408,24 @@ class ModManager(QMainWindow):
                 self.rcmenu.addAction(disableAllMod)
                 
         return super(ModManager, self).eventFilter(source, event)
+    
+    @pyqtSlot(str)
+    def on_textChanged(self, text):
+        for item in range(len(self.modList)):
+            if text in self.modList[item].name and text != '':
+                self.filterList.append(self.modList[item].modID)
+                for i in range(4):
+                    self.table.item(item, i).setBackground(QColor('yellow'))
+            else:
+                if self.modList[item].modID in self.filterList:
+                    if self.modList[item].isEnabled == 1:
+                        for i in range(4):
+                            self.table.item(item, i).setBackground(QColor.fromRgb(191, 245, 189))
+                        self.filterList.remove(self.modList[item].modID)
+                    else:
+                        for i in range(4):
+                            self.table.item(item, i).setBackground(QColor('white'))
+                        self.filterList.remove(self.modList[item].modID)
 
     def generateMenu(self, pos):
         self.rcmenu.exec_(self.table.mapToGlobal(pos))
@@ -448,7 +481,6 @@ class ModManager(QMainWindow):
         self.modList = modListNew
         self.idList = [mod.modID for mod in self.modList]
 
-    # методы для меню
     def sortByType(self, btype):
         self.modList.sort(key=sortedKey, reverse=btype)
         self.dataDisplay(self.modList)
@@ -459,7 +491,7 @@ class ModManager(QMainWindow):
         self.writeDisplayOrder()
         
     def getHelp(self):
-        QMessageBox.about(self, 'Quick help', ' - RMB menu enabled\n - Double click to switch mod state\n - Drag & Drop working\n - The manager uses the same files as the default launcher, so if there is an error in them, then it will not work too. Paradox, WHY?\n - You can ask for help anytime on manager channel on Discord server "Stellaris Modding Den"')
+        QMessageBox.about(self, 'Quick help', ' - Save load order with Ctrl+S or with Program/Save load order\n - RMB menu enabled\n - Double click to switch mod state\n - Drag & Drop working\n - The manager uses the same files as the default launcher, so if there is an error in them, then it will not work too. Paradox, WHY?\n - You can ask for help anytime on manager channel on Discord server "Stellaris Modding Den"')
 
 # ------------------------запись в файлы------------------------------------
     def createModList(self):
