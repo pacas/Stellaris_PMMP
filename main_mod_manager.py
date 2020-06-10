@@ -12,6 +12,7 @@ import webbrowser
 import feature_dnd as dnd
 import platform
 import subprocess
+import logging
 
 
 def sortedKey(mod):
@@ -42,7 +43,13 @@ class ModManager(QMainWindow):
         self.modList = list()
         self.steamIcon = QPixmap('steam.png')
         self.localIcon = QPixmap('local.png')
-        self.filterList = list()    
+        self.filterList = list()
+        if not os.path.exists("logs"):
+            os.mkdir("logs")
+        self.logs = logging.getLogger("St-PMMP")
+        handler = logging.FileHandler(filename="logs/err-mm.log", mode="w")
+        self.logs.setLevel(logging.ERROR)
+        self.logs.addHandler(handler)
         self.getModData(self.mods_registry, self.dlc_load, self.game_data)
         self.modListBackup = self.modList
         self.setupUI()
@@ -182,18 +189,20 @@ class ModManager(QMainWindow):
         self.game_data = self.mod_folder + 'game_data.json'
         self.url = 'https://steamcommunity.com/sharedfiles/filedetails/?id='
         self.steam_url = 'steam://url/CommunityFilePage/'
-    
+
     def set_Game_Location(self, path):
         self.gamepath = path
+        self.logs.error(path)
         try:
             self.steam = path[:path.find('steamapps') + 10] + 'workshop/content/281990/'
         except:
             self.steam = ''
+        self.logs.error(self.steam)
         if self.steam != '':
             steamModsFolder = QAction('Open steam mods folder', self)
             steamModsFolder.triggered.connect(lambda: self.folders_Opener(self.steam))
             self.foldersMenu.addAction(steamModsFolder)
-    
+
     def folders_Opener(self, path):
         if platform.system() == "Windows":
             os.startfile(path)
@@ -277,11 +286,14 @@ class ModManager(QMainWindow):
                     newOrder.append(j)
                     continue
         self.modList = newOrder
-    
+
     def reloadOrder(self):
-        self.modList = self.modListBackup
-        self.idList = [mod.modID for mod in self.modList]
-        self.dataDisplay(self.modList)
+        try:
+            self.modList = self.modListBackup
+            self.idList = [mod.modID for mod in self.modList]
+            self.dataDisplay(self.modList)
+        except:
+            self.logs.error("Unexpected error", exc_info=True)
 
 # ---------------------методы таблицы------------------------------------
     # обновление таблицы
@@ -322,142 +334,158 @@ class ModManager(QMainWindow):
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
 
     def modSwitch(self, row, column):
-        self.retrieveData()
-        clr = self.modList[row].isEnabled
-        if clr == 0:
-            for i in range(4):
-                self.table.item(row, i).setBackground(QColor.fromRgb(191, 245, 189))
-            self.modList[row].isEnabled = 1
-        else:
-            for i in range(4):
-                self.table.item(row, i).setBackground(QColor('white'))
-            self.modList[row].isEnabled = 0
+        try:
+            self.retrieveData()
+            clr = self.modList[row].isEnabled
+            if clr == 0:
+                for i in range(4):
+                    self.table.item(row, i).setBackground(QColor.fromRgb(191, 245, 189))
+                self.modList[row].isEnabled = 1
+            else:
+                for i in range(4):
+                    self.table.item(row, i).setBackground(QColor('white'))
+                self.modList[row].isEnabled = 0
+        except:
+            self.logs.error("Unexpected error", exc_info=True)
 
     def modSwitchAll(self, tp):
-        self.retrieveData()
-        for i in range(len(self.modList)):
-            self.modList[i].isEnabled = tp
-            if tp == 0:
-                for j in range(4):
-                    self.table.item(i, j).setBackground(QColor('white'))
-            else:
-                for j in range(4):
-                    self.table.item(i, j).setBackground(QColor.fromRgb(191, 245, 189))
+        try:
+            self.retrieveData()
+            for i in range(len(self.modList)):
+                self.modList[i].isEnabled = tp
+                if tp == 0:
+                    for j in range(4):
+                        self.table.item(i, j).setBackground(QColor('white'))
+                else:
+                    for j in range(4):
+                        self.table.item(i, j).setBackground(QColor.fromRgb(191, 245, 189))
+        except:
+            self.logs.error("Unexpected error", exc_info=True)
 
     def moveMod(self, row, column, tp):
-        if tp == 0:
-            newpos, okPressed = QInputDialog.getText(self, '', 'Enter new position:', QLineEdit.Normal, '')
-            try:
-                newpos = int(newpos)
-                if okPressed and newpos >= 0 and newpos < len(self.modList):
-                    if newpos > row:
-                        self.modList.insert(newpos, self.modList[row])
-                        self.modList.pop(row)
+        try:
+            if tp == 0:
+                newpos, okPressed = QInputDialog.getText(self, '', 'Enter new position:', QLineEdit.Normal, '')
+                try:
+                    newpos = int(newpos)
+                    if okPressed and newpos >= 0 and newpos < len(self.modList):
+                        if newpos > row:
+                            self.modList.insert(newpos, self.modList[row])
+                            self.modList.pop(row)
+                        else:
+                            self.modList.insert(newpos, self.modList[row])
+                            self.modList.pop(row + 1)
+                        self.retrieveData()
+                        self.dataDisplay(self.modList)
                     else:
-                        self.modList.insert(newpos, self.modList[row])
-                        self.modList.pop(row + 1)
-                    self.retrieveData()
-                    self.dataDisplay(self.modList)
-                else:
+                        QMessageBox.about(self, "Error", "Invalid mod position")
+                except:
                     QMessageBox.about(self, "Error", "Invalid mod position")
-            except:
-                QMessageBox.about(self, "Error", "Invalid mod position")
-        elif tp == 1 and row != 0:
-            self.modList.insert(0, self.modList[row])
-            self.modList.pop(row + 1)
-            self.retrieveData()
-            self.dataDisplay(self.modList)
-        elif tp == 2 and row != len(self.modList):
-            self.modList.insert(len(self.modList), self.modList[row])
-            self.modList.pop(row)
-            self.retrieveData()
-            self.dataDisplay(self.modList)
-        else:
-            pass
-            
+            elif tp == 1 and row != 0:
+                self.modList.insert(0, self.modList[row])
+                self.modList.pop(row + 1)
+                self.retrieveData()
+                self.dataDisplay(self.modList)
+            elif tp == 2 and row != len(self.modList):
+                self.modList.insert(len(self.modList), self.modList[row])
+                self.modList.pop(row)
+                self.retrieveData()
+                self.dataDisplay(self.modList)
+            else:
+                pass
+        except:
+            self.logs.error("Unexpected error", exc_info=True)
 
     # фильтрация эвентов ПКМ меню
     def eventFilter(self, source, event):
-        if(event.type() == QEvent.MouseButtonPress and event.buttons() == Qt.RightButton and source is self.table.viewport()):
-            item = self.table.itemAt(event.pos())
-            if item is not None:
-                self.rcmenu = QMenu(self)
-                # -------------------move mod------------------
-                mMod = QAction('Move to...', self)
-                mMod.triggered.connect(lambda: self.moveMod(item.row(), item.column(), 0))
-                self.rcmenu.addAction(mMod)
-                # -------------------move mod------------------
-                mMod = QAction('Move - top', self)
-                mMod.triggered.connect(lambda: self.moveMod(item.row(), item.column(), 1))
-                self.rcmenu.addAction(mMod)
-                # -------------------move mod------------------
-                mMod = QAction('Move - bottom', self)
-                mMod.triggered.connect(lambda: self.moveMod(item.row(), item.column(), 2))
-                self.rcmenu.addAction(mMod)
-                # -------------------one mod-------------------
-                enableMod = QAction('Enable / Disable', self)
-                enableMod.triggered.connect(lambda: self.modSwitch(item.row(), item.column()))
-                self.rcmenu.addAction(enableMod)
-                # -------------------all mods-enable-----------
-                enableAllMod = QAction('Enable all mods', self)
-                enableAllMod.triggered.connect(lambda: self.modSwitchAll(1))
-                self.rcmenu.addAction(enableAllMod)
-                # -------------------all mods-disable----------
-                disableAllMod = QAction('Disable all mods', self)
-                disableAllMod.triggered.connect(lambda: self.modSwitchAll(0))
-                self.rcmenu.addAction(disableAllMod)
-                
-        return super(ModManager, self).eventFilter(source, event)
-    
+        try:
+            if(event.type() == QEvent.MouseButtonPress and event.buttons() == Qt.RightButton and source is self.table.viewport()):
+                item = self.table.itemAt(event.pos())
+                if item is not None:
+                    self.rcmenu = QMenu(self)
+                    # -------------------move mod------------------
+                    mMod = QAction('Move to...', self)
+                    mMod.triggered.connect(lambda: self.moveMod(item.row(), item.column(), 0))
+                    self.rcmenu.addAction(mMod)
+                    # -------------------move mod------------------
+                    mMod = QAction('Move - top', self)
+                    mMod.triggered.connect(lambda: self.moveMod(item.row(), item.column(), 1))
+                    self.rcmenu.addAction(mMod)
+                    # -------------------move mod------------------
+                    mMod = QAction('Move - bottom', self)
+                    mMod.triggered.connect(lambda: self.moveMod(item.row(), item.column(), 2))
+                    self.rcmenu.addAction(mMod)
+                    # -------------------one mod-------------------
+                    enableMod = QAction('Enable / Disable', self)
+                    enableMod.triggered.connect(lambda: self.modSwitch(item.row(), item.column()))
+                    self.rcmenu.addAction(enableMod)
+                    # -------------------all mods-enable-----------
+                    enableAllMod = QAction('Enable all mods', self)
+                    enableAllMod.triggered.connect(lambda: self.modSwitchAll(1))
+                    self.rcmenu.addAction(enableAllMod)
+                    # -------------------all mods-disable----------
+                    disableAllMod = QAction('Disable all mods', self)
+                    disableAllMod.triggered.connect(lambda: self.modSwitchAll(0))
+                    self.rcmenu.addAction(disableAllMod)
+            return super(ModManager, self).eventFilter(source, event)
+        except:
+            self.logs.error("Unexpected error", exc_info=True)
+
     @pyqtSlot(str)
     def on_textChanged(self, text):
-        for item in range(len(self.modList)):
-            if text in self.modList[item].name and text != '':
-                self.filterList.append(self.modList[item].modID)
-                for i in range(4):
-                    self.table.item(item, i).setBackground(QColor('yellow'))
-            else:
-                if self.modList[item].modID in self.filterList:
-                    if self.modList[item].isEnabled == 1:
-                        for i in range(4):
-                            self.table.item(item, i).setBackground(QColor.fromRgb(191, 245, 189))
-                        self.filterList.remove(self.modList[item].modID)
-                    else:
-                        for i in range(4):
-                            self.table.item(item, i).setBackground(QColor('white'))
-                        self.filterList.remove(self.modList[item].modID)
+        try:
+            for item in range(len(self.modList)):
+                if text in self.modList[item].name and text != '':
+                    self.filterList.append(self.modList[item].modID)
+                    for i in range(4):
+                        self.table.item(item, i).setBackground(QColor('yellow'))
+                else:
+                    if self.modList[item].modID in self.filterList:
+                        if self.modList[item].isEnabled == 1:
+                            for i in range(4):
+                                self.table.item(item, i).setBackground(QColor.fromRgb(191, 245, 189))
+                            self.filterList.remove(self.modList[item].modID)
+                        else:
+                            for i in range(4):
+                                self.table.item(item, i).setBackground(QColor('white'))
+                            self.filterList.remove(self.modList[item].modID)
+        except:
+            self.logs.error("Unexpected error", exc_info=True)
 
     def generateMenu(self, pos):
         self.rcmenu.exec_(self.table.mapToGlobal(pos))
 
     def displayModData(self, row, column):
-        self.retrieveData()
-        self.modname.setText(self.modList[row].name)
-        preview = ''
-        texttags = 'Tags:\n'
-        self.linkButton.disconnect()
-        self.linkSteamButton.disconnect()
-        self.linkButton.clicked.connect(lambda: webbrowser.open(self.url + str(self.modList[row].steamID)))
-        self.linkSteamButton.clicked.connect(lambda: webbrowser.open(self.steam_url + str(self.modList[row].steamID)))
-        with open(self.mod_folder + self.modList[row].modID) as file:
-            for text in file:
-                if 'picture="' in text:
-                    text.strip()
-                    preview = text[9:-2]
-                    break
-        if self.modList[row].source == 'local':
-            self.printModPreview(self.modList[row].dirPath + '\\' + preview)
-            self.linkButton.setVisible(0)
-            self.linkSteamButton.setVisible(0)
-        else:
-            self.printModPreview(self.steam + self.modList[row].steamID + '\\' + preview)
-            self.linkButton.setVisible(1)
-            self.linkSteamButton.setVisible(1)
-        for tag in self.modList[row].tags:
-            texttags += tag
-            texttags += '\n'
-        self.textBrowser.setText(texttags)
-        self.textBrowser.setMinimumSize(QSize(280, 35 + len(self.modList[row].tags) * 25))
+        try:
+            self.retrieveData()
+            self.modname.setText(self.modList[row].name)
+            preview = ''
+            texttags = 'Tags:\n'
+            self.linkButton.disconnect()
+            self.linkSteamButton.disconnect()
+            self.linkButton.clicked.connect(lambda: webbrowser.open(self.url + str(self.modList[row].steamID)))
+            self.linkSteamButton.clicked.connect(lambda: webbrowser.open(self.steam_url + str(self.modList[row].steamID)))
+            with open(self.mod_folder + self.modList[row].modID) as file:
+                for text in file:
+                    if 'picture="' in text:
+                        text.strip()
+                        preview = text[9:-2]
+                        break
+            if self.modList[row].source == 'local':
+                self.printModPreview(self.modList[row].dirPath + '\\' + preview)
+                self.linkButton.setVisible(0)
+                self.linkSteamButton.setVisible(0)
+            else:
+                self.printModPreview(self.steam + self.modList[row].steamID + '\\' + preview)
+                self.linkButton.setVisible(1)
+                self.linkSteamButton.setVisible(1)
+            for tag in self.modList[row].tags:
+                texttags += tag
+                texttags += '\n'
+            self.textBrowser.setText(texttags)
+            self.textBrowser.setMinimumSize(QSize(280, 35 + len(self.modList[row].tags) * 25))
+        except:
+            self.logs.error("Unexpected error", exc_info=True)
 
     def cellHover(self, row, column):
         item = self.table.item(row, column)
@@ -486,10 +514,13 @@ class ModManager(QMainWindow):
         self.dataDisplay(self.modList)
 
     def dumpLoadOrder(self):
-        self.retrieveData()
-        self.writeLoadOrder()
-        self.writeDisplayOrder()
-        
+        try:
+            self.retrieveData()
+            self.writeLoadOrder()
+            self.writeDisplayOrder()
+        except:
+            self.logs.error("Unexpected error", exc_info=True)
+
     def getHelp(self):
         QMessageBox.about(self, 'Quick help', ' - Save load order with Ctrl+S or with Program/Save load order\n - RMB menu enabled\n - Double click to switch mod state\n - Drag & Drop working\n - The manager uses the same files as the default launcher, so if there is an error in them, then it will not work too. Paradox, WHY?\n - You can ask for help anytime on manager channel on Discord server "Stellaris Modding Den"')
 

@@ -9,42 +9,64 @@ import main_mod_manager as manager
 import sys
 import os
 import psutil
+import logging
 
 
 class Controller(QWidget):
     def __init__(self):
         super().__init__()
         self.gamepath = ''
-        self.first_Launch()
-        self.show_Launcher()
-        self.Launcher.modmanager.clicked.connect(self.show_ModManager)
-        self.Launcher.options.clicked.connect(self.show_Options)
-        self.Launcher.exit.clicked.connect(self.close_Launcher)
+        if not os.path.exists("logs"):
+            os.mkdir("logs")
+        self.logs = logging.getLogger("St-PLP")
+        handler = logging.FileHandler(filename = "logs/err-launcher.log", mode="w")
+        self.logs.setLevel(logging.ERROR)
+        self.logs.addHandler(handler)
+        try:
+            self.first_Launch()
+            self.show_Launcher()
+            self.Launcher.modmanager.clicked.connect(self.show_ModManager)
+            self.Launcher.options.clicked.connect(self.show_Options)
+            self.Launcher.exit.clicked.connect(self.close_Launcher)
+        except:
+            self.logs.error("Unexpected error", exc_info=True)
 
     def show_Launcher(self):
-        self.Launcher = launcher.Launcher()
-        self.Launcher.launch.clicked.connect(lambda: self.Launcher.gamestart(self.gamepath + '/stellaris.exe'))
-        self.Launcher.show()
+        try:
+            self.Launcher = launcher.Launcher()
+            self.Launcher.launch.clicked.connect(lambda: self.Launcher.gamestart(self.gamepath + '/stellaris.exe'))
+            self.Launcher.show()
+        except:
+            self.logs.error("Unexpected error", exc_info=True)
 
     def show_ModManager(self):
-        self.ModManager = manager.ModManager()
-        self.ModManager.openBackupMenu.triggered.connect(self.show_Backups)
-        self.ModManager.exitACT.triggered.connect(lambda: self.ModManager.close())
-        self.ModManager.set_Game_Location(self.gamepath)
-        self.ModManager.show()
+        try:
+            self.ModManager = manager.ModManager()
+            self.ModManager.openBackupMenu.triggered.connect(self.show_Backups)
+            self.ModManager.exitACT.triggered.connect(lambda: self.ModManager.close())
+            self.ModManager.set_Game_Location(self.gamepath)
+            self.ModManager.show()
+        except:
+            self.logs.error("Unexpected error", exc_info=True)
 
     def show_Options(self):
-        self.Options = options.Options()
-        self.Options.closew.clicked.connect(lambda: self.Options.close())
-        self.Options.show()
+        try:
+            self.Options = options.Options()
+            self.Options.closew.clicked.connect(lambda: self.Options.close())
+            self.Options.show()
+        except:
+            self.logs.error("Unexpected error", exc_info=True)
 
     def show_Backups(self):
-        self.Backups = backups.Backups()
-        self.Backups.make.clicked.connect(lambda: self.Backups.make_Backup(self.ModManager.modList))
-        self.Backups.load.clicked.connect(lambda: self.load_From_Backup_Connect())
-        self.Backups.delete.clicked.connect(lambda: self.remove_Backup())
-        self.Backups.closew.clicked.connect(lambda: self.Backups.close())
-        self.Backups.show()
+        try:
+            self.Backups = backups.Backups()
+            self.Backups.make.clicked.connect(lambda: self.Backups.make_Backup(self.ModManager.modList))
+            self.Backups.load.clicked.connect(lambda: self.load_From_Backup_Connect())
+            self.Backups.delete.clicked.connect(lambda: self.remove_Backup())
+            self.Backups.closew.clicked.connect(lambda: self.Backups.close())
+            self.Backups.show()
+        except:
+            self.logs.error("Unexpected error", exc_info=True)
 
     def load_From_Backup_Connect(self):
         try:
@@ -52,8 +74,8 @@ class Controller(QWidget):
             cell = self.Backups.table.item(index[0].row(), 0).text()
             newModList = self.Backups.load_From_Backup(self.ModManager.modList, cell)
             self.ModManager.dataDisplay(newModList)
-        except IndexError:
-            pass
+        except:
+            self.logs.error("Unexpected error", exc_info=True)
 
     def remove_Backup(self):
         try:
@@ -61,8 +83,8 @@ class Controller(QWidget):
             cell = self.Backups.table.item(index[0].row(), 0).text()
             os.remove('backup/' + cell + '.bak')
             self.Backups.dataDisplay()
-        except IndexError:
-            pass
+        except:
+            self.logs.error("Unexpected error", exc_info=True)
 
     # добавить везде кнопки закрытия и убрать эту функцию
     def close_Launcher(self):
@@ -101,17 +123,21 @@ class Controller(QWidget):
                     # зациклить на ожидание правильного ввода
                     self.close_Launcher()
             else:
+                self.gamepath = self.steam
                 self.ini_Write(self.steam)
 
     def get_Disk_Links(self):
-        self.steam = '/Steam/steamapps/common/Stellaris/'
-        disks = psutil.disk_partitions()
-        self.check = 0
-        for disk in disks:
-            if os.path.exists(disk.device + self.steam) is True:
-                self.steam = disk.device + self.steam
-                self.check = 1
-                break
+        try:
+            self.steam = '/Steam/steamapps/common/Stellaris/'
+            disks = psutil.disk_partitions()
+            self.check = 0
+            for disk in disks:
+                if os.path.exists(disk.device + self.steam) is True:
+                    self.steam = disk.device + self.steam
+                    self.check = 1
+                    break
+        except:
+            self.logs.error("Unexpected error", exc_info=True)
 
     def ini_Write(self, path):
         try:
