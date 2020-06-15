@@ -10,12 +10,15 @@ import sys
 import os
 import psutil
 import logging
+import sqlite3
+import atexit
 
 
 class Controller(QWidget):
     def __init__(self):
         super().__init__()
         self.gamepath = ''
+        self.get_connection()
         if not os.path.exists("logs"):
             os.mkdir("logs")
         self.logs = logging.getLogger("St-PLP")
@@ -23,6 +26,7 @@ class Controller(QWidget):
         self.logs.setLevel(logging.ERROR)
         self.logs.addHandler(handler)
         try:
+            self.get_Disk_Links()
             self.first_Launch()
             self.show_Launcher()
             self.Launcher.modmanager.clicked.connect(self.show_ModManager)
@@ -41,9 +45,10 @@ class Controller(QWidget):
 
     def show_ModManager(self):
         try:
-            self.ModManager = manager.ModManager()
+            self.ModManager = manager.ModManager(self.launch, self.conn, self.cursor)
             self.ModManager.openBackupMenu.triggered.connect(self.show_Backups)
             self.ModManager.exitACT.triggered.connect(lambda: self.ModManager.close())
+            self.ModManager.exitButton.clicked.connect(lambda: self.ModManager.close())
             self.ModManager.set_Game_Location(self.gamepath)
             self.ModManager.show()
         except:
@@ -85,9 +90,20 @@ class Controller(QWidget):
             self.Backups.dataDisplay()
         except:
             self.logs.error("Unexpected error", exc_info=True)
+    
+    def get_connection(self):
+        self.conn = sqlite3.connect("modsDB.db")
+        self.cursor = self.conn.cursor()
+        atexit.register(self.close_connection, self.conn)
+    
+    def close_connection(self, conn):
+        print('Connection closed')
+        conn.commit()
+        conn.close()
 
     # добавить везде кнопки закрытия и убрать эту функцию
     def close_Launcher(self):
+        self.close_connection(self.conn)
         try:
             self.ModManager.close()
         except AttributeError:
@@ -106,25 +122,35 @@ class Controller(QWidget):
             pass
 
     def first_Launch(self):
-        self.get_Disk_Links()
         try:
             with open('launcher-settings.ini', 'r', encoding='UTF-8') as settings:
-                data = settings.readline()
-                self.gamepath = data[14:]
+                data = settings.readlines()
+                self.gamepath = data[0][14:-1]
+                self.lang = data[1][5:]
+                self.launch = 0
         except FileNotFoundError:
+            self.launch = 1
             if self.check == 0:
+                print("\a")
                 QMessageBox.about(self, "Attention", "Please enter your game location in the next window (C:/Steam/steamapps/common/Stellaris as example)")
                 self.gamepath, okPressed = QInputDialog.getText(self, 'Attention', 'Game location:', QLineEdit.Normal, '')
-                if okPressed and self.gamepath != '':
-                    self.ini_Write(self.gamepath)
-                    QMessageBox.about(self, 'Warning', 'Attention, if this is your first launch of the mod manager, it is strongly recommended delete files dlc_load, game_data and mods_registry in your Documents/Paradox Interactive/Stellaris folder with making a backup of them and start default launcher once. After this YOU MUST ENABLE ALL MODS IN MODLIST! Do not ask me why. It`s just works. This will delete the boot order and the list of enabled mods, but can help to avoid many errors.')
+                if okPressed:
+                    test = self.gamepath + '\stellaris.exe'
+                    if os.path.isfile(test):
+                        self.ini_Write(self.gamepath, 'eng')
+                        print("\a")
+                        QMessageBox.about(self, 'Warning', 'Attention, if this is your first launch of the mod manager, YOU MUST RUN THE GAME AT LEAST ONCE!')
+                    else:
+                        print("\a")
+                        QMessageBox.about(self, 'Warning', 'Enter valid name')
+                        self.first_Launch()
                 else:
+                    print("\a")
                     QMessageBox.about(self, 'Warning', 'Enter valid name')
-                    # зациклить на ожидание правильного ввода
-                    self.close_Launcher()
+                    self.first_Launch()
             else:
                 self.gamepath = self.steam
-                self.ini_Write(self.steam)
+                self.ini_Write(self.steam, 'eng')
 
     def get_Disk_Links(self):
         try:
@@ -139,11 +165,12 @@ class Controller(QWidget):
         except:
             self.logs.error("Unexpected error", exc_info=True)
 
-    def ini_Write(self, path):
+    def ini_Write(self, path, lang):
         try:
             with open('launcher-settings.ini', 'w+', encoding='UTF-8') as settings:
-                settings.write('game_location=' + path)
+                settings.write('game_location=' + path + '\nlang=' + lang)
         except FileNotFoundError:
+            print("\a")
             QMessageBox.about(self, "Warning", "Error")
 
 

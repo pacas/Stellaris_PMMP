@@ -2,10 +2,11 @@
 #-*- coding:utf-8 -*-
 
 from PyQt5.QtWidgets import QMainWindow, QWidget, QSizePolicy, QLabel
-from PyQt5.QtWidgets import QGridLayout, QComboBox, QPushButton
+from PyQt5.QtWidgets import QGridLayout, QComboBox, QPushButton, QMessageBox
 from PyQt5.QtCore import QSize, Qt
 from PyQt5.QtGui import QIcon, QImage, QPalette, QBrush
 import os
+import langSelector as l
 
 
 class Options(QMainWindow):
@@ -13,7 +14,8 @@ class Options(QMainWindow):
         super().__init__(*args, **kwargs)
         # ----------------------------------
         self.setFixedSize(QSize(800, 600))
-        self.setWindowTitle('Options')
+        self.setWindowTitle(l.r.options)
+        self.setWindowFlags(Qt.FramelessWindowHint)
         self.setWindowIcon(QIcon('logo.png'))
         background = QImage('background.jpg')
         self.centralwidget = QWidget(self)
@@ -24,38 +26,42 @@ class Options(QMainWindow):
         self.setPalette(palette)
         self.setStyleSheet('QLabel {font-size: 12pt; color: #3a86de;}')
         # ----------------------------------
-        self.windowname = QLabel('Display mode', self.centralwidget)
+        self.windowname = QLabel(l.r.displayMode, self.centralwidget)
         self.windowtype = QComboBox(self.centralwidget)
-        self.windowtype.addItems(['Fullscreen', 'Borderless', 'Window'])
+        self.windowtype.addItems([l.r.fullscreen, l.r.borderless, l.r.window])
         self.windowtype.currentIndexChanged.connect(self.displayChange)
         # ----------------------------------
-        self.wsizename = QLabel('Screen resolution', self.centralwidget)
+        self.wsizename = QLabel(l.r.resolution, self.centralwidget)
         self.wsize = QComboBox(self.centralwidget)
         self.wsize.addItems(['1920x1080', '3840x2160', '1680x1050', '1600x1024', '1600x900', '1440x900', '1366x768', '1360x768', '1280x1024', '1280x960', '1280x800', '1280x768', '1280x720', '1176x664', '1152x864', '1024x768'])
         self.wsize.currentIndexChanged.connect(self.resChange)
         # ----------------------------------
-        self.langname = QLabel('Language', self.centralwidget)
+        self.langName = QLabel(l.r.gameLanguage, self.centralwidget)
         self.lang = QComboBox(self.centralwidget)
         self.lang.addItems(['English', 'Russian', 'Deutsch', 'Polski', 'Portuguese', 'French', 'Spanish', 'Chinese'])
         self.lang.currentIndexChanged.connect(self.langChange)
         # ----------------------------------
-        self.saves = QPushButton('Save settings', self.centralwidget)
+        self.appLangName = QLabel(l.r.appLanguage, self.centralwidget)
+        self.appLang = QComboBox(self.centralwidget)
+        self.appLang.addItems(['English', 'Russian'])
+        self.appLang.currentIndexChanged.connect(self.appLangChange)
+        # ----------------------------------
+        self.saves = QPushButton(l.r.saveSettings, self.centralwidget)
         self.saves.clicked.connect(self.saveSettings)
         self.saves.setFixedSize(QSize(230, 60))
-        self.closew = QPushButton('Close', self.centralwidget)
+        self.closew = QPushButton(l.r.close, self.centralwidget)
         self.closew.setFixedSize(QSize(230, 60))
-        # self.empty = QLabel('', self.centralwidget)
-        # self.empty.setFixedSize(QSize(30, 10))
         # ---layout-------------------------
         self.gridLayout.addWidget(self.windowname, 0, 0, 1, 1)
-        # self.gridLayout.addWidget(self.empty, 0, 1, 1, 1)
         self.gridLayout.addWidget(self.windowtype, 0, 2, 1, 1)
         self.gridLayout.addWidget(self.wsizename, 1, 0, 1, 1)
         self.gridLayout.addWidget(self.wsize, 1, 2, 1, 1)
-        self.gridLayout.addWidget(self.langname, 2, 0, 1, 1)
+        self.gridLayout.addWidget(self.langName, 2, 0, 1, 1)
         self.gridLayout.addWidget(self.lang, 2, 2, 1, 1)
-        self.gridLayout.addWidget(self.saves, 3, 0, 1, 1)
-        self.gridLayout.addWidget(self.closew, 3, 2, 1, 1)
+        self.gridLayout.addWidget(self.appLangName, 3, 0, 1, 1)
+        self.gridLayout.addWidget(self.appLang, 3, 2, 1, 1)
+        self.gridLayout.addWidget(self.saves, 4, 0, 1, 1)
+        self.gridLayout.addWidget(self.closew, 4, 2, 1, 1)
         # ----------------------------------
         self.settingsRead()
         self.setCentralWidget(self.centralwidget)
@@ -66,11 +72,11 @@ class Options(QMainWindow):
             self.stList = file.readlines()
         # ----------------------------------
         if self.stList[16] == '\tfullScreen=yes\n' and self.stList[17] == '\tborderless=no\n':
-            index = self.windowtype.findText('Fullscreen', Qt.MatchFixedString)
+            index = self.windowtype.findText(l.r.fullscreen, Qt.MatchFixedString)
         elif self.stList[16] == '\tfullScreen=no\n' and self.stList[17] == '\tborderless=yes\n':
-            index = self.windowtype.findText('Borderless', Qt.MatchFixedString)
+            index = self.windowtype.findText(l.r.borderless, Qt.MatchFixedString)
         else:
-            index = self.windowtype.findText('Window', Qt.MatchFixedString)
+            index = self.windowtype.findText(l.r.window, Qt.MatchFixedString)
         self.windowtype.setCurrentIndex(index)
         # ----------------------------------
         text = self.stList[4][4:-1] + 'x' + self.stList[5][4:-1]
@@ -90,6 +96,16 @@ class Options(QMainWindow):
             index2 = self.lang.findText(text, Qt.MatchFixedString)
         self.lang.setCurrentIndex(index2)
         # ----------------------------------
+        with open('launcher-settings.ini', 'r') as file:
+            settingsList = file.readlines()
+            self.appLanguage = settingsList[1][5:]
+            self.startLang = self.appLanguage
+        # ----------------------------------
+        if self.appLanguage == 'rus':
+            index3 = self.appLang.findText('Russian', Qt.MatchFixedString)
+        else:
+            index3 = self.appLang.findText('English', Qt.MatchFixedString)
+        self.appLang.setCurrentIndex(index3)
 
     def displayChange(self, d):
         if d == 0:
@@ -159,8 +175,22 @@ class Options(QMainWindow):
             self.stList[1] = 'language="l_spanish"\n'
         else:
             self.stList[1] = 'language="l_simp_chinese"\n'
+    
+    def appLangChange(self, i):
+        if i == 1:
+            self.appLanguage = 'rus'
+        else:
+            self.appLanguage = 'eng'
 
     def saveSettings(self):
         with open(self.settings, 'w+', encoding='utf-8') as file:
             for line in self.stList:
                 file.write(line)
+        with open('launcher-settings.ini', 'r') as file:
+            settingsList = file.readlines()
+            settingsList[1] = 'lang=' + self.appLanguage
+        with open('launcher-settings.ini', 'w+') as file:
+            for line in settingsList:
+                file.write(line)
+        if self.startLang != self.appLanguage:
+            QMessageBox.about(self, l.r.attention, l.r.langChange)

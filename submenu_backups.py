@@ -10,6 +10,7 @@ import glob
 import datetime
 import feature_dnd as dnd
 import re
+import langSelector as l
 
 
 class BackupFile():
@@ -24,7 +25,7 @@ class Backups(QMainWindow):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # ----------------------------------
-        self.setWindowTitle('Backups')
+        self.setWindowTitle(l.r.backups)
         self.setWindowIcon(QIcon('logo.png'))
         self.folder = 'backup'
         # ---central widget----------------
@@ -41,13 +42,13 @@ class Backups(QMainWindow):
         self.header.setSectionResizeMode(2, QHeaderView.ResizeToContents)
         self.table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         # ---buttons------------------------
-        self.make = QPushButton('Make backup', self.centralwidget)
+        self.make = QPushButton(l.r.makeBackup, self.centralwidget)
         self.make.setFixedSize(QSize(170, 60))
-        self.load = QPushButton('Load from backup', self.centralwidget)
+        self.load = QPushButton(l.r.loadBackup, self.centralwidget)
         self.load.setFixedSize(QSize(170, 60))
-        self.delete = QPushButton('Remove backup', self.centralwidget)
+        self.delete = QPushButton(l.r.removeBackup, self.centralwidget)
         self.delete.setFixedSize(QSize(170, 60))
-        self.closew = QPushButton('Close', self.centralwidget)
+        self.closew = QPushButton(l.r.close, self.centralwidget)
         self.closew.setFixedSize(QSize(170, 60))
         # ---layout-------------------------
         self.gridLayout.addWidget(self.table, 0, 0, 10, 10)
@@ -61,7 +62,8 @@ class Backups(QMainWindow):
 
     def make_Backup(self, modList):
         regex = re.compile('[ @!#$%^&*"()<>?/\|}{~:]')
-        name, okPressed = QInputDialog.getText(self, "Get text", "Backup name:", QLineEdit.Normal, "")
+        print("\a")
+        name, okPressed = QInputDialog.getText(self, l.r.enterName, l.r.backupName, QLineEdit.Normal, "")
         if okPressed and name != '' and regex.search(name) == None:
             if not os.path.exists(self.folder):
                 os.mkdir(self.folder)
@@ -72,22 +74,26 @@ class Backups(QMainWindow):
                     bfile.write(mod.modID + ' ' + str(mod.isEnabled) + '\n')
             self.dataDisplay()
         else:
-            QMessageBox.about(self, 'Warning', 'Enter valid name without symbols: \n @_!#$%^&*"()<>?/\|}{~: and whitespace')
+            print("\a")
+            QMessageBox.about(self, l.r.warning, l.r.warningDesc2)
 
     def load_From_Backup(self, modList, name):
         with open('backup/' + name + '.bak', 'r', encoding='utf-8') as bfile:
             data = bfile.readlines()
-            modInfo = data[0].split(' ')
-            modInfo.pop()
+            data.pop(0)
+            counter = 0
             newModList = []
-            for i in range(1, len(data)):
-                a = data[i].split(' ')
+            for line in data:
+                line = line.strip()
+                # a = data[i].split(' ')
                 for mod in modList:
-                    if mod.modID == a[0]:
-                        mod.isEnabled = int(a[1])
+                    if mod.modID == line[:-2]:
+                        mod.isEnabled = int(line[-1:])
+                        mod.prior = counter
                         newModList.append(mod)
                         modList.remove(mod)
                         break
+                counter += 1
             finalModList = modList + newModList
             return finalModList
 
@@ -103,7 +109,7 @@ class Backups(QMainWindow):
     def dataDisplay(self):
         self.backups = self.load_Backup_List()
         self.table.setRowCount(0)
-        labels = ['Name', 'Mod count', 'Creation time']
+        labels = [l.r.name, l.r.modCount, l.r.creationTime]
         self.table.setHorizontalHeaderLabels(labels)
         for i in range(2):
             self.table.horizontalHeaderItem(i).setTextAlignment(Qt.AlignHCenter)

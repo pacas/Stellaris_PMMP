@@ -5,40 +5,48 @@ from PyQt5.QtWidgets import QAction, QMainWindow, QWidget, QSizePolicy, QLabel, 
 from PyQt5.QtWidgets import QTableWidget, QTableWidgetItem, QHBoxLayout, QVBoxLayout, QMessageBox
 from PyQt5.QtWidgets import QPushButton, QHeaderView, QSpacerItem, QTextBrowser, QMenu
 from PyQt5.QtCore import QSize, Qt, QEvent, pyqtSlot
-from PyQt5.QtGui import QColor, QPixmap, QFont, QIcon, QBrush
-import json
+from PyQt5.QtGui import QColor, QPixmap, QFont, QIcon
 import os
 import webbrowser
 import feature_dnd as dnd
 import platform
-import subprocess
+from subprocess import Popen
 import logging
+from glob import glob
+import re
+import json
+import langSelector as l
 
 
 def sortedKey(mod):
     return mod.sortedKey
 
+def prior(mod):
+    return mod.prior
+
 
 class Mod():
-    def __init__(self, hashID, name, modID, version, tags, source, steamID, dirPath, archivePath, isEnabled):
-        self.hashID = hashID
+    def __init__(self, name, path, modID, version, tags, isEnabled, source, prior, picture, modfile):
         self.name = name
+        self.path = path
         self.modID = modID
         self.version = version
         self.tags = tags
-        self.source = source
-        self.steamID = steamID
-        self.dirPath = dirPath
-        self.archivePath = archivePath
         self.isEnabled = isEnabled
+        self.source = source
+        self.prior = prior
+        self.picture = picture
+        self.modfile = modfile
         self.sortedKey = name.encode('utf8', errors='ignore')
 
 
 # мод менеджер
 class ModManager(QMainWindow):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, first, conn, cursor, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # ----------------------------------
+        self.conn = conn
+        self.cursor = cursor
         self.get_Disk_Links()
         self.modList = list()
         self.steamIcon = QPixmap('steam.png')
@@ -50,13 +58,14 @@ class ModManager(QMainWindow):
         handler = logging.FileHandler(filename="logs/err-mm.log", mode="w")
         self.logs.setLevel(logging.ERROR)
         self.logs.addHandler(handler)
-        self.getModData(self.mods_registry, self.dlc_load, self.game_data)
+        self.getModInfoFromFiles(first)
+        self.getModList()
         self.modListBackup = self.modList
         self.setupUI()
 
     def setupUI(self):
         self.setMinimumSize(QSize(1200, 700))
-        self.setWindowTitle('Mod Manager')
+        self.setWindowTitle(l.r.manager)
         self.setWindowIcon(QIcon('logo.png'))
         # ---central widget----------------
         self.centralwidget = QWidget(self)
@@ -72,12 +81,10 @@ class ModManager(QMainWindow):
         self.header.setSectionResizeMode(0, QHeaderView.ResizeToContents)
         self.header.setSectionResizeMode(1, QHeaderView.Stretch)
         self.header.setSectionResizeMode(2, QHeaderView.ResizeToContents)
-        # self.header.setSectionResizeMode(3, QHeaderView.ResizeToContents)
         self.table.setColumnWidth(3, 20)
         self.table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.table.setMinimumSize(QSize(800, 300))
         self.additionalLayout.addWidget(self.table, 0)
-        # self.horizontalLayout.addWidget(self.table, 0)
         self.verticalLayout = QVBoxLayout()
         self.dataDisplay(self.modList)
         self.table.cellDoubleClicked.connect(self.modSwitch)
@@ -87,12 +94,11 @@ class ModManager(QMainWindow):
         self.table.viewport().installEventFilter(self)
         self.table.setMouseTracking(True)
         self.current_hover = [0, 0]
-        # self.table.cellEntered.connect(self.cellHover)
         # ---filter-------------------------
-        self.filterLabel = QLabel('Search:', self.centralwidget)
+        self.filterLabel = QLabel(l.r.search, self.centralwidget)
         self.filterLine = QLineEdit('', self.centralwidget)
         self.filterLine.textChanged.connect(self.on_textChanged)
-        self.filterClean = QPushButton('Clean', self.centralwidget)
+        self.filterClean = QPushButton(l.r.clean, self.centralwidget)
         self.filterClean.clicked.connect(lambda: self.filterLine.setText(''))
         self.filterClean.setMaximumSize(QSize(75, 30))
         self.additionalLayout.addLayout(self.filterLayout)
@@ -100,7 +106,7 @@ class ModManager(QMainWindow):
         self.filterLayout.addWidget(self.filterLine, 1)
         self.filterLayout.addWidget(self.filterClean, 2)
         # ---modname------------------------
-        self.modname = QLabel('Mod Title', self.centralwidget)
+        self.modname = QLabel(l.r.modTitle, self.centralwidget)
         self.modname.setMinimumSize(QSize(320, 70))
         newfont = QFont('Times', 18, QFont.Bold)
         self.modname.setFont(newfont)
@@ -109,97 +115,103 @@ class ModManager(QMainWindow):
         self.verticalLayout.addWidget(self.modname, 0, Qt.AlignHCenter | Qt.AlignVCenter)
         # ---preview pic--------------------
         self.pic = QLabel()
-        self.printModPreview(None)
+        self.printModPreview('nologo.png')
         self.verticalLayout.addWidget(self.pic, 0, Qt.AlignHCenter | Qt.AlignVCenter)
         self.verticalLayout.addSpacerItem(QSpacerItem(20, 20, QSizePolicy.Fixed, QSizePolicy.Fixed))
         # ---mod description----------------
         self.textBrowser = QTextBrowser(self.centralwidget)
-        # self.textBrowser.setMinimumSize(QSize(280, 290))
         newfont = QFont('Verdana', 13, QFont.Bold)
         self.textBrowser.setFont(newfont)
         self.verticalLayout.addWidget(self.textBrowser, 0, Qt.AlignHCenter | Qt.AlignVCenter)
         # ---link button--------------------
         self.verticalLayout.addSpacerItem(QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding))
-        self.linkButton = QPushButton('Open in browser', self.centralwidget)
-        self.linkButton.setMinimumSize(QSize(300, 30))
-        self.linkButton.setMaximumSize(QSize(300, 30))
+        self.linkButton = QPushButton(l.r.openBrowser, self.centralwidget)
+        self.linkButton.setFixedSize(QSize(260, 30))
         self.verticalLayout.addWidget(self.linkButton, 0, Qt.AlignHCenter | Qt.AlignVCenter)
         # -------------
-        self.linkSteamButton = QPushButton('Open on steam', self.centralwidget)
-        self.linkSteamButton.setMinimumSize(QSize(300, 30))
-        self.linkSteamButton.setMaximumSize(QSize(300, 30))
+        self.linkSteamButton = QPushButton(l.r.openSteam, self.centralwidget)
+        self.linkSteamButton.setFixedSize(QSize(260, 30))
         self.verticalLayout.addWidget(self.linkSteamButton, 0, Qt.AlignHCenter | Qt.AlignVCenter)
-        self.verticalLayout.addSpacerItem(QSpacerItem(30, 30, QSizePolicy.Fixed, QSizePolicy.Fixed))
+        self.verticalLayout.addSpacerItem(QSpacerItem(40, 20, QSizePolicy.Fixed, QSizePolicy.Fixed))
+        # -------------
+        self.exitButton = QPushButton(l.r.exitLabel, self.centralwidget)
+        self.exitButton.setFixedSize(QSize(260, 30))
+        self.verticalLayout.addWidget(self.exitButton, 0, Qt.AlignHCenter | Qt.AlignVCenter)
+        self.verticalLayout.addSpacerItem(QSpacerItem(10, 10, QSizePolicy.Fixed, QSizePolicy.Fixed))
         # ---finalizing---------------------
         self.horizontalLayout.addLayout(self.additionalLayout)
         self.horizontalLayout.addLayout(self.verticalLayout)
         self.setCentralWidget(self.centralwidget)
         # ---menu---------------------------
         self.menu = self.menuBar()
-        prMenu = self.menu.addMenu('&Program')
-        orderMenu = self.menu.addMenu('&Sorting')
-        self.foldersMenu = self.menu.addMenu('&Folders')
-        backupMenu = self.menu.addMenu('&Backups')
+        prMenu = self.menu.addMenu(l.r.programMenu)
+        orderMenu = self.menu.addMenu(l.r.sortingMenu)
+        self.foldersMenu = self.menu.addMenu(l.r.foldersMenu)
+        backupMenu = self.menu.addMenu(l.r.backupsMenu)
         # ---program------------------------
-        dumpACT = QAction('Save load order', self)
+        dumpACT = QAction(l.r.saveOrder, self)
         dumpACT.setShortcut('Ctrl+S')
         dumpACT.triggered.connect(self.dumpLoadOrder)
         prMenu.addAction(dumpACT)
         # -------------
-        helpACT = QAction('Help', self)
+        reloadMods = QAction(l.r.reloadMods, self)
+        reloadMods.setShortcut('Ctrl+S')
+        reloadMods.triggered.connect(lambda: self.getModInfoFromFiles(0))
+        prMenu.addAction(reloadMods)
+        # -------------
+        helpACT = QAction(l.r.helpLabel, self)
         helpACT.triggered.connect(self.getHelp)
         prMenu.addAction(helpACT)
         # -------------
-        self.exitACT = QAction('Exit', self)
+        self.exitACT = QAction(l.r.exitLabel, self)
         prMenu.addAction(self.exitACT)
         # ---sorting------------------------
-        orderACT = QAction('Sort in alphabetical order', self)
+        orderACT = QAction(l.r.sortAsc, self)
         orderACT.triggered.connect(lambda: self.sortByType(True))
         orderMenu.addAction(orderACT)
         # -------------
-        order1ACT = QAction('Sort in reverse alphabetical order', self)
+        order1ACT = QAction(l.r.sortDesc, self)
         order1ACT.triggered.connect(lambda: self.sortByType(False))
         orderMenu.addAction(order1ACT)
         # ---folders------------------------
-        gameFolder = QAction('Open game folder', self)
+        gameFolder = QAction(l.r.openGameFolder, self)
         gameFolder.triggered.connect(lambda: self.folders_Opener(self.gamepath))
         self.foldersMenu.addAction(gameFolder)
         # -------------
-        docsFolder = QAction('Open game docs folder', self)
-        docsFolder.triggered.connect(lambda: self.folders_Opener(self.mod_folder))
+        docsFolder = QAction(l.r.openGameDocs, self)
+        docsFolder.triggered.connect(lambda: self.folders_Opener(self.doc_folder))
         self.foldersMenu.addAction(docsFolder)
         # -------------
-        localModsFolder = QAction('Open local mods folder', self)
-        localModsFolder.triggered.connect(lambda: self.folders_Opener(self.mod_folder + 'mod/'))
+        localModsFolder = QAction(l.r.openLocalMods, self)
+        localModsFolder.triggered.connect(lambda: self.folders_Opener(self.doc_folder + 'mod/'))
         self.foldersMenu.addAction(localModsFolder)
         # ---backups------------------------
-        self.openBackupMenu = QAction('Open backups menu', self)
+        self.openBackupMenu = QAction(l.r.openBackups, self)
         backupMenu.addAction(self.openBackupMenu)
         # -------------
-        reload = QAction('Reload starting modlist', self)
+        reload = QAction(l.r.reloadModlist, self)
         reload.triggered.connect(self.reloadOrder)
         backupMenu.addAction(reload)
 
 # ---------------------установка путей игры и работа с ними---------------------------
     def get_Disk_Links(self):
-        self.mod_folder = os.path.join(os.path.expanduser('~'), 'Documents', 'Paradox Interactive', 'Stellaris') + '/'
-        self.dlc_load = self.mod_folder + 'dlc_load.json'
-        self.mods_registry = self.mod_folder + 'mods_registry.json'
-        self.mods_data = self.mod_folder + 'mods_data.json'
-        self.game_data = self.mod_folder + 'game_data.json'
+        self.doc_folder = os.path.join(os.path.expanduser('~'), 'Documents', 'Paradox Interactive', 'Stellaris') + '/'
+        self.mod_folder = self.doc_folder + '/mod/'
+        self.dlc_load = self.doc_folder + 'dlc_load.json'
+        self.mods_registry = self.doc_folder + 'mods_registry.json'
+        self.mods_data = self.doc_folder + 'mods_data.json'
+        self.game_data = self.doc_folder + 'game_data.json'
         self.url = 'https://steamcommunity.com/sharedfiles/filedetails/?id='
         self.steam_url = 'steam://url/CommunityFilePage/'
 
     def set_Game_Location(self, path):
         self.gamepath = path
-        self.logs.error(path)
         try:
             self.steam = path[:path.find('steamapps') + 10] + 'workshop/content/281990/'
         except:
             self.steam = ''
-        self.logs.error(self.steam)
         if self.steam != '':
-            steamModsFolder = QAction('Open steam mods folder', self)
+            steamModsFolder = QAction(l.r.openSteamMods, self)
             steamModsFolder.triggered.connect(lambda: self.folders_Opener(self.steam))
             self.foldersMenu.addAction(steamModsFolder)
 
@@ -207,107 +219,163 @@ class ModManager(QMainWindow):
         if platform.system() == "Windows":
             os.startfile(path)
         elif platform.system() == "Darwin":
-            subprocess.Popen(["open", path])
+            Popen(["open", path])
         else:
-            subprocess.Popen(["xdg-open", path])
+            Popen(["xdg-open", path])
 
 # ---------------------загрузка данных модификаций------------------------------------
-    def printModPreview(self, image):
-        self.tmp = QPixmap(image)
-        self.tmp = self.tmp.scaled(256, 256, Qt.KeepAspectRatio)
-        self.pic.setPixmap(self.tmp)
-
-    # получение данных из файлов
-    def getModData(self, m, d, g):
-        with open(m, encoding='UTF-8') as gameData:
-            data = json.load(gameData)
-            self.getModList(data)
-            self.createModList()
-        # ----------------------------------
-        with open(d, encoding='UTF-8') as loadOrder:
-            data = json.load(loadOrder)
-            self.getLoadList(data)
-        # ----------------------------------
-        with open(g, encoding='UTF-8') as dataOrder:
-            data = json.load(dataOrder)
-            self.getDisplayList(data)
-        self.idList = [mod.modID for mod in self.modList]
-
-    def getModList(self, data):
-        for hashID, data in data.items():
-            try:
-                name = data['displayName']
-                modID = data['gameRegistryId']
-                source = data['source']
-                try:
-                    version = data['requiredVersion']
-                except KeyError:
-                    version = '---'
-                    with open(self.mod_folder + modID) as file:
-                        for text in file:
-                            if 'version="' in text:
-                                text.strip()
-                                version = text[9:-2]
-                                break
-                try:
-                    steamID = data['steamId']
-                except KeyError:
-                    steamID = ''
-                try:
-                    tags = data['tags']
-                except KeyError:
-                    tags = ''
-                dirPath = data['dirPath']
-                try:
-                    archivePath = data['archivePath']
-                except KeyError:
-                    archivePath = ''
-                mod = Mod(hashID, name, modID, version, tags, source, steamID, dirPath, archivePath, isEnabled=0)
-                self.modList.append(mod)
-            except KeyError:
-                print('broken mod -', name)
-
-    # получение текущего списка загрузки (включённые моды)
-    def getLoadList(self, data):
-        load = data['enabled_mods']
-        for i in load:
-            for j in self.modList:
-                if str(i) == j.modID:
-                    j.isEnabled = 1
-                    break
-
-    # получение текущего списка загрузки (порядок)
-    def getDisplayList(self, data):
-        load = data['modsOrder']
-        newOrder = []
-        for i in load:
-            for j in self.modList:
-                if str(i) == j.hashID:
-                    newOrder.append(j)
-                    continue
-        self.modList = newOrder
-
-    def reloadOrder(self):
+    # получение данных из файлов .mod
+    def getModInfoFromFiles(self, firstLaunch):
         try:
-            self.modList = self.modListBackup
-            self.idList = [mod.modID for mod in self.modList]
-            self.dataDisplay(self.modList)
+            self.modsToAdd = list()
+            self.modsToCheck = list()
+            self.newValuesForMods = list()
+            self.dotModList = glob(self.mod_folder + '*.mod')
+            if firstLaunch == 1:
+                prior = 0
+                self.cursor.execute("CREATE TABLE IF NOT EXISTS mods (name text, path text, modID text, version text, tags text, state bit, source text, prior int, picture text, modfile text)")
+                self.conn.commit()
+                for mod in self.dotModList:
+                    self.getModData(mod, prior, 0)
+                    prior += 1
+            else:
+                self.cursor.execute("SELECT COUNT (*) FROM mods")
+                records = self.cursor.fetchall()
+                prior = int(records[0][0])
+                self.cursor.execute("SELECT * FROM mods")
+                records = self.cursor.fetchall()
+                for mod in records:
+                    if mod[9] not in self.dotModList:
+                        self.cursor.execute("DELETE FROM mods WHERE modfile = '" + mod[9] + "'")
+                for mod in self.dotModList:
+                    self.cursor.execute("SELECT EXISTS(SELECT name FROM mods WHERE modfile = '" + mod + "')")
+                    records = self.cursor.fetchall()
+                    if records[0][0] == 0:
+                        self.getModData(mod, prior, 0)
+                        prior += 1
+                    else:
+                        self.modsToCheck.append(mod)
+                for mod in self.modsToCheck:
+                    self.getModData(mod, prior, 1)
+            self.cursor.executemany("INSERT INTO mods VALUES (?,?,?,?,?,?,?,?,?,?)", self.modsToAdd)
+            self.cursor.executemany("UPDATE mods SET name = ?, version = ?, tags = ?, picture = ? WHERE modID = ?", self.newValuesForMods)
+            self.conn.commit()
+        except:
+            self.logs.error("Unexpected error", exc_info=True)
+            
+    def getModData(self, mod, prior, update):
+        try:
+            with open(mod) as file:
+                data = file.readlines()
+                text = ''
+                for i in range(len(data)):
+                    text += data[i]
+                text.replace('replace_path', ' ')
+                name = re.search(r'name=".*"', text)
+                name = name.group(0)
+                name = name[6:-1]
+                path = re.search(r'path=".*"', text)
+                try:
+                    path = path.group(0)
+                    path = path[6:-1]
+                except AttributeError:
+                    path = ''
+                if path == '':
+                    path = re.search(r'archive=".*"', text)
+                    try:
+                        path = path.group(0)
+                        path = path[9:-1]
+                    except AttributeError:
+                        path = ''
+                version = re.search(r'supported_version=".*"', text)
+                if version is None:
+                    version = re.search(r'version=".*"', text)
+                    try:
+                        version = version.group(0)
+                        version = version[9:-1]
+                    except AttributeError:
+                        version = '---'
+                else:
+                    version = version.group(0)
+                    version = version[19:-1]
+                remote_file_id = re.search(r'remote_file_id=".*"', text)
+                if remote_file_id is None:
+                    if path.find('steamapps') != -1:
+                        source = 'steam'
+                    else:
+                        source = 'local'
+                else:
+                    source = 'steam'
+                try:
+                    remote_file_id = remote_file_id.group(0)
+                    remote_file_id = remote_file_id[16:-1]
+                    modID = remote_file_id
+                except AttributeError:
+                    try:
+                        modID = path.split('mod/')
+                        modID = modID[1]
+                    except:
+                        try:
+                            modID = path.split('281990/')
+                            modID = modID[1]
+                            modID = modID.split('/')
+                            modID = modID[0]
+                        except:
+                            modID = '---'
+                picture = re.search(r'picture=".*"', text)
+                try:
+                    picture = picture.group(0)
+                    picture = picture[9:-1]
+                except AttributeError:
+                    picture = ''
+                text = text.replace('\n', '')
+                text = text.replace('\t', '')
+                tags = re.search(r'tags={".*"}', text)
+                try:
+                    tags = tags.group(0)
+                    tags = tags[7:-2]
+                    tags = tags.replace('""','\n')
+                    if 'dependencies' in tags:
+                        tmp = tags.find('}')
+                        tags = tags[:tmp-1]
+                except AttributeError:
+                    tags = ''
+                mods = [name, path, modID, version, tags, 0, source, prior, picture, mod]
+                if update == 0:
+                    self.modsToAdd.append(mods)
+                else:
+                    newVal = [name, version, tags, picture, modID]
+                    self.newValuesForMods.append(newVal)
+        except:
+            self.logs.error("Unexpected error", exc_info=True)
+            
+    # получение итоговых данных
+    def getModList(self):
+        try:
+            self.cursor.execute("SELECT * FROM mods")
+            records = self.cursor.fetchall()
+            for row in records:
+                mod = Mod(row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7], row[8], row[9])
+                self.modList.append(mod)
+            self.modList.sort(key=prior)
+            self.idList = [mod.name for mod in self.modList]
         except:
             self.logs.error("Unexpected error", exc_info=True)
 
-# ---------------------методы таблицы------------------------------------
+# ----------------------визуальная составляющая--------------------------
     # обновление таблицы
     def dataDisplay(self, modList):
         self.modList = modList
         self.table.setRowCount(0)
         self.table.setRowCount(len(modList))
-        labels = ['Path', 'Name', 'Version', 'Type']
+        labels = [l.r.modIDLabel, l.r.name, l.r.version, l.r.modType]
         self.table.setHorizontalHeaderLabels(labels)
-        for i in range(3):
+        for i in range(4):
             self.table.horizontalHeaderItem(i).setTextAlignment(Qt.AlignHCenter)
 
         counter = 0
         for mod in modList:
+            mod.prior = counter
             # ----------------------------------
             self.table.setItem(counter, 0, QTableWidgetItem(mod.modID))
             # ----------------------------------
@@ -332,6 +400,14 @@ class ModManager(QMainWindow):
             counter += 1
 
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
+
+    def printModPreview(self, image):
+        if os.path.isfile(image):
+            tmp = QPixmap(image)
+        else:
+            tmp = QPixmap('nologo.png')
+        tmp = tmp.scaled(256, 256, Qt.KeepAspectRatio)
+        self.pic.setPixmap(tmp)
 
     def modSwitch(self, row, column):
         try:
@@ -365,7 +441,7 @@ class ModManager(QMainWindow):
     def moveMod(self, row, column, tp):
         try:
             if tp == 0:
-                newpos, okPressed = QInputDialog.getText(self, '', 'Enter new position:', QLineEdit.Normal, '')
+                newpos, okPressed = QInputDialog.getText(self, '', l.r.newPos, QLineEdit.Normal, '')
                 try:
                     newpos = int(newpos)
                     if okPressed and newpos >= 0 and newpos < len(self.modList):
@@ -378,9 +454,9 @@ class ModManager(QMainWindow):
                         self.retrieveData()
                         self.dataDisplay(self.modList)
                     else:
-                        QMessageBox.about(self, "Error", "Invalid mod position")
+                        QMessageBox.about(self, l.r.error, l.r.errorPos)
                 except:
-                    QMessageBox.about(self, "Error", "Invalid mod position")
+                    QMessageBox.about(self, l.r.error, l.r.errorPos)
             elif tp == 1 and row != 0:
                 self.modList.insert(0, self.modList[row])
                 self.modList.pop(row + 1)
@@ -404,27 +480,27 @@ class ModManager(QMainWindow):
                 if item is not None:
                     self.rcmenu = QMenu(self)
                     # -------------------move mod------------------
-                    mMod = QAction('Move to...', self)
+                    mMod = QAction(l.r.moveTo, self)
                     mMod.triggered.connect(lambda: self.moveMod(item.row(), item.column(), 0))
                     self.rcmenu.addAction(mMod)
                     # -------------------move mod------------------
-                    mMod = QAction('Move - top', self)
+                    mMod = QAction(l.r.moveTop, self)
                     mMod.triggered.connect(lambda: self.moveMod(item.row(), item.column(), 1))
                     self.rcmenu.addAction(mMod)
                     # -------------------move mod------------------
-                    mMod = QAction('Move - bottom', self)
+                    mMod = QAction(l.r.moveBottom, self)
                     mMod.triggered.connect(lambda: self.moveMod(item.row(), item.column(), 2))
                     self.rcmenu.addAction(mMod)
                     # -------------------one mod-------------------
-                    enableMod = QAction('Enable / Disable', self)
+                    enableMod = QAction(l.r.switchState, self)
                     enableMod.triggered.connect(lambda: self.modSwitch(item.row(), item.column()))
                     self.rcmenu.addAction(enableMod)
                     # -------------------all mods-enable-----------
-                    enableAllMod = QAction('Enable all mods', self)
+                    enableAllMod = QAction(l.r.enableAll, self)
                     enableAllMod.triggered.connect(lambda: self.modSwitchAll(1))
                     self.rcmenu.addAction(enableAllMod)
                     # -------------------all mods-disable----------
-                    disableAllMod = QAction('Disable all mods', self)
+                    disableAllMod = QAction(l.r.disableAll, self)
                     disableAllMod.triggered.connect(lambda: self.modSwitchAll(0))
                     self.rcmenu.addAction(disableAllMod)
             return super(ModManager, self).eventFilter(source, event)
@@ -459,55 +535,50 @@ class ModManager(QMainWindow):
         try:
             self.retrieveData()
             self.modname.setText(self.modList[row].name)
-            preview = ''
-            texttags = 'Tags:\n'
+            texttags = l.r.tagsForField
+            texttags += self.modList[row].tags
             self.linkButton.disconnect()
             self.linkSteamButton.disconnect()
-            self.linkButton.clicked.connect(lambda: webbrowser.open(self.url + str(self.modList[row].steamID)))
-            self.linkSteamButton.clicked.connect(lambda: webbrowser.open(self.steam_url + str(self.modList[row].steamID)))
-            with open(self.mod_folder + self.modList[row].modID) as file:
-                for text in file:
-                    if 'picture="' in text:
-                        text.strip()
-                        preview = text[9:-2]
-                        break
+            self.linkButton.clicked.connect(lambda: webbrowser.open(self.url + str(self.modList[row].modID)))
+            self.linkSteamButton.clicked.connect(lambda: webbrowser.open(self.steam_url + str(self.modList[row].modID)))
             if self.modList[row].source == 'local':
-                self.printModPreview(self.modList[row].dirPath + '\\' + preview)
                 self.linkButton.setVisible(0)
                 self.linkSteamButton.setVisible(0)
+                if self.modList[row].picture != '':
+                    self.printModPreview(self.doc_folder + self.modList[row].path + '\\' + self.modList[row].picture)
+                else:
+                    self.printModPreview('nologo.png')
             else:
-                self.printModPreview(self.steam + self.modList[row].steamID + '\\' + preview)
                 self.linkButton.setVisible(1)
                 self.linkSteamButton.setVisible(1)
-            for tag in self.modList[row].tags:
-                texttags += tag
-                texttags += '\n'
+                if self.modList[row].picture != '':
+                    self.printModPreview(self.steam + self.modList[row].modID + '\\' + self.modList[row].picture)
+                else:
+                    self.printModPreview('nologo.png')
             self.textBrowser.setText(texttags)
-            self.textBrowser.setMinimumSize(QSize(280, 35 + len(self.modList[row].tags) * 25))
+            self.textBrowser.setMinimumSize(QSize(280, 35 + texttags.count('\n') * 25))
         except:
             self.logs.error("Unexpected error", exc_info=True)
 
-    def cellHover(self, row, column):
-        item = self.table.item(row, column)
-        old_item = self.table.item(self.current_hover[0], self.current_hover[1])
-        if self.current_hover != [row, column]:
-            clr = self.modList[self.current_hover[0]].isEnabled
-            if clr == 0:
-                old_item.setBackground(QColor('white'))
-            else:
-                old_item.setBackground(QColor.fromRgb(191, 245, 189))
-            item.setBackground(QBrush(QColor('yellow')))
-        self.current_hover = [row, column]
+# ------------------------технические методы--------------------------------
+    def reloadOrder(self):
+        try:
+            self.modList = self.modListBackup
+            self.idList = [mod.name for mod in self.modList]
+            self.dataDisplay(self.modList)
+        except:
+            self.logs.error("Unexpected error", exc_info=True)
 
     def retrieveData(self):
         modListNew = []
         for i in range(len(self.modList)):
-            item = self.table.item(i, 0)
+            item = self.table.item(i, 1)
             ID = item.text()
             r = self.idList.index(ID)
+            self.modList[r].prior = i
             modListNew.append(self.modList[r])
         self.modList = modListNew
-        self.idList = [mod.modID for mod in self.modList]
+        self.idList = [mod.name for mod in self.modList]
 
     def sortByType(self, btype):
         self.modList.sort(key=sortedKey, reverse=btype)
@@ -516,65 +587,82 @@ class ModManager(QMainWindow):
     def dumpLoadOrder(self):
         try:
             self.retrieveData()
+            self.saveInDB()
+            self.saveInGame()
             self.writeLoadOrder()
-            self.writeDisplayOrder()
         except:
+            print('error')
             self.logs.error("Unexpected error", exc_info=True)
 
     def getHelp(self):
-        QMessageBox.about(self, 'Quick help', ' - Save load order with Ctrl+S or with Program/Save load order\n - RMB menu enabled\n - Double click to switch mod state\n - Drag & Drop working\n - The manager uses the same files as the default launcher, so if there is an error in them, then it will not work too. Paradox, WHY?\n - You can ask for help anytime on manager channel on Discord server "Stellaris Modding Den"')
+        QMessageBox.about(self, l.r.helpLabel, l.r.helpContent)
 
-# ------------------------запись в файлы------------------------------------
-    def createModList(self):
-        allFile = dict()
+# ------------------------запись в базу-------------------------------------
+    def saveInDB(self):
+        allFile = list()
+        self.cursor.execute('DELETE FROM mods')
+        self.conn.commit()
         for mod in self.modList:
-            md = dict()
+            md = list()
             try:
-                md.update([('displayName', mod.name)])
-                md.update([('gameRegistryId', mod.modID)])
-                md.update([('source', mod.source)])
-                if mod.steamID != '':
-                    md.update([('steamId', mod.steamID)])
-                md.update([('requiredVersion', mod.version)])
-                md.update([('dirPath', mod.dirPath)])
-                if mod.archivePath != '':
-                    md.update([('archivePath', mod.archivePath)])
-                md.update([('status', 'ready_to_play')])
-                md.update([('id', mod.hashID)])
+                md.append(mod.name)
+                md.append(mod.path)
+                md.append(mod.modID)
+                md.append(mod.version)
+                md.append(mod.tags)
+                md.append(mod.isEnabled)
+                md.append(mod.source)
+                md.append(mod.prior)
+                md.append(mod.picture)
+                md.append(mod.modfile)
             except KeyError:
-                print('error in ', mod.name)
-            allFile.update([(mod.hashID, md)])
-        with open(self.mods_data, 'w', encoding='utf-8') as json_file:
-            json.dump(allFile, json_file, ensure_ascii=False)
-        with open(self.mods_data, 'r', encoding='utf-8') as f:
-            lines = f.readlines()
-        lines = [line.replace('": ', '":') for line in lines]
-        lines = [line.replace('", "', '","') for line in lines]
-        lines = [line.replace('"}, ', '"},') for line in lines]
-        with open(self.mods_data, 'w', encoding='utf-8') as f:
-            f.writelines(lines)
+                pass
+            allFile.append(md)
+        self.cursor.executemany("INSERT INTO mods VALUES (?,?,?,?,?,?,?,?,?,?)", allFile)
+        self.conn.commit()
 
-    # запись включённых модов
+    def saveInGame(self):
+        settingsFile = self.doc_folder + 'settings.txt'
+        with open(settingsFile, 'r') as file:
+            settingsList = file.readlines()
+        text = ''
+        for i in range(len(settingsList)):
+            text += settingsList[i]
+        active = re.search(r'last_mods={.*autosave', text, flags=re.DOTALL)
+        newActive = 'last_mods={\n\t'
+        for mod in self.modList:
+            if mod.isEnabled == 1:
+                if mod.source == 'steam':
+                    newActive += '"mod/ugc_' + mod.modID + '.mod"\n\t'
+                else:
+                    newActive += '"mod/' + mod.modID + '.mod"\n\t'
+        newActive = newActive[:-1]
+        newActive += '}\nautosave'
+        try:
+            active = active.group(0)
+        except AttributeError:
+            active = re.search(r'autosave', text, flags=re.DOTALL)
+            try:
+                active = active.group(0)
+            except AttributeError:
+                pass
+        text = text.replace(active, newActive)
+        with open(settingsFile, 'w+', encoding='utf-8') as file:
+            file.write(text)
+            
     def writeLoadOrder(self):
         data = {}
-        with open(self.dlc_load, 'r+') as json_file:
+        loadFile = self.doc_folder + 'dlc_load.json'
+        with open(loadFile, 'r+') as json_file:
             data = json.load(json_file)
         summary = []
         for mod in self.modList:
             if mod.isEnabled == 1:
-                summary.append(mod.modID)
+                if mod.source == 'steam':
+                    modStr = 'mod/ugc_' + mod.modID + '.mod'
+                else:
+                    modStr = 'mod/' + mod.modID + '.mod'
+                summary.append(modStr)
         data['enabled_mods'] = summary
-        with open(self.dlc_load, 'w') as json_file:
-            json.dump(data, json_file)
-
-    # запись порядка загрузки
-    def writeDisplayOrder(self):
-        data = {}
-        with open(self.game_data, 'r+') as json_file:
-            data = json.load(json_file)
-        summary = []
-        for mod in self.modList:
-            summary.append(mod.hashID)
-        data['modsOrder'] = summary
-        with open(self.game_data, 'w') as json_file:
+        with open(loadFile, 'w') as json_file:
             json.dump(data, json_file)

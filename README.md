@@ -21,11 +21,12 @@ All the main functions of the default launcher are included, and at the moment, 
 * Fast way to open mod page on Steam Workshop
 * Menu for opening game directories
 * More mods moving options
+* Multilanguage support
+* Additional error protection
 
 Features under development:
-* Additional error protection
-* Multilanguage support
 * (maybe) Themes support
+* Others
 
 
 Quick help:
