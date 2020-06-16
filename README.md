@@ -42,3 +42,4 @@ Additional screenshots:
  
 ![Options Preview](https://i.imgur.com/xOraDBI.png)
 ![Backups Preview](https://i.imgur.com/Yhraowg.png)
+![Another Manager Preview](https://i.imgur.com/ZOtXDzp.png)
