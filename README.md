@@ -26,6 +26,7 @@ All the main functions of the default launcher are included, and at the moment, 
 
 Features under development:
 * (maybe) Themes support
+* Multiplatform support
 * Others
 
 
