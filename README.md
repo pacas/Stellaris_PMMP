@@ -8,11 +8,11 @@ If you have Python 3 installed, you can use the script version (PyQt5 and psutil
 
 Launcher preview: 
  
-![Launcher Preview](https://i.imgur.com/8ABNY4B.png)
+![Launcher Preview](https://i.imgur.com/6YuI0Eh.png)
  
 Mod manager preview: 
  
-![Mod Manager Preview](https://i.imgur.com/iYyodx7.png)
+![Mod Manager Preview](https://i.imgur.com/H3dDrEI.png)
  
 All the main functions of the default launcher are included, and at the moment, in addition to this, there is:
 * Moving a mod by index
@@ -37,3 +37,8 @@ Quick help:
 - Drag & Drop working
 - The manager uses the same files as the default launcher, so if there is an error in them, then it will not work too. Paradox, WHY?
 - You can ask for help anytime on [this discord server](https://discord.gg/9JqvFrF)
+
+Additional screenshots:
+ 
+![Options Preview](https://i.imgur.com/xOraDBI.png)
+![Backups Preview](https://i.imgur.com/Yhraowg.png)
