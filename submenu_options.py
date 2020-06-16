@@ -175,7 +175,7 @@ class Options(QMainWindow):
             self.stList[1] = 'language="l_spanish"\n'
         else:
             self.stList[1] = 'language="l_simp_chinese"\n'
-    
+
     def appLangChange(self, i):
         if i == 1:
             self.appLanguage = 'rus'

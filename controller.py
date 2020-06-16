@@ -22,7 +22,7 @@ class Controller(QWidget):
         if not os.path.exists("logs"):
             os.mkdir("logs")
         self.logs = logging.getLogger("St-PLP")
-        handler = logging.FileHandler(filename = "logs/err-launcher.log", mode="w")
+        handler = logging.FileHandler(filename="logs/err-launcher.log", mode="w")
         self.logs.setLevel(logging.ERROR)
         self.logs.addHandler(handler)
         try:
@@ -51,6 +51,7 @@ class Controller(QWidget):
             self.ModManager.exitButton.clicked.connect(lambda: self.ModManager.close())
             self.ModManager.set_Game_Location(self.gamepath)
             self.ModManager.show()
+            self.launch = 0
         except:
             self.logs.error("Unexpected error", exc_info=True)
 
@@ -79,6 +80,7 @@ class Controller(QWidget):
             cell = self.Backups.table.item(index[0].row(), 0).text()
             newModList = self.Backups.load_From_Backup(self.ModManager.modList, cell)
             self.ModManager.dataDisplay(newModList)
+            self.ModManager.modList = newModList
         except:
             self.logs.error("Unexpected error", exc_info=True)
 
@@ -90,12 +92,14 @@ class Controller(QWidget):
             self.Backups.dataDisplay()
         except:
             self.logs.error("Unexpected error", exc_info=True)
-    
+
     def get_connection(self):
         self.conn = sqlite3.connect("modsDB.db")
         self.cursor = self.conn.cursor()
+        self.cursor.execute("CREATE TABLE IF NOT EXISTS mods (name text, path text, modID text, version text, tags text, state bit, source text, prior int, picture text, modfile text)")
+        self.conn.commit()
         atexit.register(self.close_connection, self.conn)
-    
+
     def close_connection(self, conn):
         print('Connection closed')
         conn.commit()
@@ -135,7 +139,7 @@ class Controller(QWidget):
                 QMessageBox.about(self, "Attention", "Please enter your game location in the next window (C:/Steam/steamapps/common/Stellaris as example)")
                 self.gamepath, okPressed = QInputDialog.getText(self, 'Attention', 'Game location:', QLineEdit.Normal, '')
                 if okPressed:
-                    test = self.gamepath + '\stellaris.exe'
+                    test = self.gamepath + '\\stellaris.exe'
                     if os.path.isfile(test):
                         self.ini_Write(self.gamepath, 'eng')
                         print("\a")

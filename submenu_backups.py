@@ -64,7 +64,7 @@ class Backups(QMainWindow):
         regex = re.compile('[ @!#$%^&*"()<>?/\|}{~:]')
         print("\a")
         name, okPressed = QInputDialog.getText(self, l.r.enterName, l.r.backupName, QLineEdit.Normal, "")
-        if okPressed and name != '' and regex.search(name) == None:
+        if okPressed and name != '' and regex.search(name) is None:
             if not os.path.exists(self.folder):
                 os.mkdir(self.folder)
             with open('backup/' + name + '.bak', 'w+', encoding='utf-8') as bfile:

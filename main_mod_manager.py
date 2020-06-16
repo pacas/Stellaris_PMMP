@@ -233,8 +233,6 @@ class ModManager(QMainWindow):
             self.dotModList = glob(self.mod_folder + '*.mod')
             if firstLaunch == 1:
                 prior = 0
-                self.cursor.execute("CREATE TABLE IF NOT EXISTS mods (name text, path text, modID text, version text, tags text, state bit, source text, prior int, picture text, modfile text)")
-                self.conn.commit()
                 for mod in self.dotModList:
                     self.getModData(mod, prior, 0)
                     prior += 1
@@ -262,7 +260,7 @@ class ModManager(QMainWindow):
             self.conn.commit()
         except:
             self.logs.error("Unexpected error", exc_info=True)
-            
+
     def getModData(self, mod, prior, update):
         try:
             with open(mod) as file:
@@ -334,10 +332,10 @@ class ModManager(QMainWindow):
                 try:
                     tags = tags.group(0)
                     tags = tags[7:-2]
-                    tags = tags.replace('""','\n')
+                    tags = tags.replace('""', '\n')
                     if 'dependencies' in tags:
                         tmp = tags.find('}')
-                        tags = tags[:tmp-1]
+                        tags = tags[:tmp - 1]
                 except AttributeError:
                     tags = ''
                 mods = [name, path, modID, version, tags, 0, source, prior, picture, mod]
@@ -348,7 +346,7 @@ class ModManager(QMainWindow):
                     self.newValuesForMods.append(newVal)
         except:
             self.logs.error("Unexpected error", exc_info=True)
-            
+
     # получение итоговых данных
     def getModList(self):
         try:
@@ -358,7 +356,6 @@ class ModManager(QMainWindow):
                 mod = Mod(row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7], row[8], row[9])
                 self.modList.append(mod)
             self.modList.sort(key=prior)
-            self.idList = [mod.name for mod in self.modList]
         except:
             self.logs.error("Unexpected error", exc_info=True)
 
@@ -411,7 +408,6 @@ class ModManager(QMainWindow):
 
     def modSwitch(self, row, column):
         try:
-            self.retrieveData()
             clr = self.modList[row].isEnabled
             if clr == 0:
                 for i in range(4):
@@ -426,7 +422,6 @@ class ModManager(QMainWindow):
 
     def modSwitchAll(self, tp):
         try:
-            self.retrieveData()
             for i in range(len(self.modList)):
                 self.modList[i].isEnabled = tp
                 if tp == 0:
@@ -451,7 +446,6 @@ class ModManager(QMainWindow):
                         else:
                             self.modList.insert(newpos, self.modList[row])
                             self.modList.pop(row + 1)
-                        self.retrieveData()
                         self.dataDisplay(self.modList)
                     else:
                         QMessageBox.about(self, l.r.error, l.r.errorPos)
@@ -460,12 +454,10 @@ class ModManager(QMainWindow):
             elif tp == 1 and row != 0:
                 self.modList.insert(0, self.modList[row])
                 self.modList.pop(row + 1)
-                self.retrieveData()
                 self.dataDisplay(self.modList)
             elif tp == 2 and row != len(self.modList):
                 self.modList.insert(len(self.modList), self.modList[row])
                 self.modList.pop(row)
-                self.retrieveData()
                 self.dataDisplay(self.modList)
             else:
                 pass
@@ -533,7 +525,6 @@ class ModManager(QMainWindow):
 
     def displayModData(self, row, column):
         try:
-            self.retrieveData()
             self.modname.setText(self.modList[row].name)
             texttags = l.r.tagsForField
             texttags += self.modList[row].tags
@@ -564,21 +555,9 @@ class ModManager(QMainWindow):
     def reloadOrder(self):
         try:
             self.modList = self.modListBackup
-            self.idList = [mod.name for mod in self.modList]
             self.dataDisplay(self.modList)
         except:
             self.logs.error("Unexpected error", exc_info=True)
-
-    def retrieveData(self):
-        modListNew = []
-        for i in range(len(self.modList)):
-            item = self.table.item(i, 1)
-            ID = item.text()
-            r = self.idList.index(ID)
-            self.modList[r].prior = i
-            modListNew.append(self.modList[r])
-        self.modList = modListNew
-        self.idList = [mod.name for mod in self.modList]
 
     def sortByType(self, btype):
         self.modList.sort(key=sortedKey, reverse=btype)
@@ -586,7 +565,6 @@ class ModManager(QMainWindow):
 
     def dumpLoadOrder(self):
         try:
-            self.retrieveData()
             self.saveInDB()
             self.saveInGame()
             self.writeLoadOrder()
@@ -601,7 +579,6 @@ class ModManager(QMainWindow):
     def saveInDB(self):
         allFile = list()
         self.cursor.execute('DELETE FROM mods')
-        self.conn.commit()
         for mod in self.modList:
             md = list()
             try:
@@ -649,7 +626,7 @@ class ModManager(QMainWindow):
         text = text.replace(active, newActive)
         with open(settingsFile, 'w+', encoding='utf-8') as file:
             file.write(text)
-            
+
     def writeLoadOrder(self):
         data = {}
         loadFile = self.doc_folder + 'dlc_load.json'
