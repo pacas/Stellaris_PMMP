@@ -18,6 +18,7 @@ import json
 import langSelector as l
 
 
+# keys for sorting
 def sortedKey(mod):
     return mod.sortedKey
 
@@ -25,6 +26,7 @@ def prior(mod):
     return mod.prior
 
 
+# mod storage structure 
 class Mod():
     def __init__(self, name, path, modID, version, tags, isEnabled, source, prior, picture, modfile):
         self.name = name
@@ -40,41 +42,48 @@ class Mod():
         self.sortedKey = name.encode('utf8', errors='ignore')
 
 
-# мод менеджер
 class ModManager(QMainWindow):
     def __init__(self, first, conn, cursor, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # ----------------------------------
+        # ------DB connection---------------
         self.conn = conn
         self.cursor = cursor
+        # ------Lists and disk files--------
         self.get_Disk_Links()
         self.modList = list()
         self.steamIcon = QPixmap('steam.png')
         self.localIcon = QPixmap('local.png')
         self.filterList = list()
+        # ------Logging---------------------
         if not os.path.exists("logs"):
             os.mkdir("logs")
         self.logs = logging.getLogger("St-PMMP")
-        handler = logging.FileHandler(filename="logs/err-mm.log", mode="w")
+        handler = logging.FileHandler(filename="logs/err-mm.log", mode="a+")
+        formatter = logging.Formatter('%(asctime)s: %(message)s')
+        handler.setFormatter(formatter)
         self.logs.setLevel(logging.ERROR)
         self.logs.addHandler(handler)
+        # ------Creating modlist------------
         self.getModInfoFromFiles(first)
         self.getModList()
+        # ------Backup list-----------------
         self.modListBackup = self.modList
+        # ------UI setup--------------------
         self.setupUI()
 
     def setupUI(self):
+        # ------Window setup----------------
         self.setMinimumSize(QSize(1200, 700))
         self.setWindowTitle(l.r.manager)
         self.setWindowIcon(QIcon('logo.png'))
-        # ---central widget----------------
+        # ------Central widget--------------
         self.centralwidget = QWidget(self)
         self.horizontalLayout = QHBoxLayout(self.centralwidget)
         self.additionalLayout = QVBoxLayout()
         self.filterLayout = QHBoxLayout()
         self.centralwidget.setMinimumSize(QSize(1200, 700))
         self.centralwidget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        # ---table widget-------------------
+        # ------Table widget----------------
         self.table = dnd.TableWidgetDragRows()
         self.table.setColumnCount(4)
         self.header = self.table.horizontalHeader()
@@ -94,7 +103,7 @@ class ModManager(QMainWindow):
         self.table.viewport().installEventFilter(self)
         self.table.setMouseTracking(True)
         self.current_hover = [0, 0]
-        # ---filter-------------------------
+        # ------Filter----------------------
         self.filterLabel = QLabel(l.r.search, self.centralwidget)
         self.filterLine = QLineEdit('', self.centralwidget)
         self.filterLine.textChanged.connect(self.on_textChanged)
@@ -105,7 +114,7 @@ class ModManager(QMainWindow):
         self.filterLayout.addWidget(self.filterLabel, 0)
         self.filterLayout.addWidget(self.filterLine, 1)
         self.filterLayout.addWidget(self.filterClean, 2)
-        # ---modname------------------------
+        # ------Mod title label-------------
         self.modname = QLabel(l.r.modTitle, self.centralwidget)
         self.modname.setMinimumSize(QSize(320, 70))
         newfont = QFont('Times', 18, QFont.Bold)
@@ -113,17 +122,17 @@ class ModManager(QMainWindow):
         self.modname.setWordWrap(True)
         self.modname.setAlignment(Qt.AlignHCenter)
         self.verticalLayout.addWidget(self.modname, 0, Qt.AlignHCenter | Qt.AlignVCenter)
-        # ---preview pic--------------------
+        # ------Preview pic-----------------
         self.pic = QLabel()
         self.printModPreview('nologo.png')
         self.verticalLayout.addWidget(self.pic, 0, Qt.AlignHCenter | Qt.AlignVCenter)
         self.verticalLayout.addSpacerItem(QSpacerItem(20, 20, QSizePolicy.Fixed, QSizePolicy.Fixed))
-        # ---mod description----------------
+        # ------Mod description-------------
         self.textBrowser = QTextBrowser(self.centralwidget)
         newfont = QFont('Verdana', 13, QFont.Bold)
         self.textBrowser.setFont(newfont)
         self.verticalLayout.addWidget(self.textBrowser, 0, Qt.AlignHCenter | Qt.AlignVCenter)
-        # ---link button--------------------
+        # ------Links for buttons-----------
         self.verticalLayout.addSpacerItem(QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding))
         self.linkButton = QPushButton(l.r.openBrowser, self.centralwidget)
         self.linkButton.setFixedSize(QSize(260, 30))
@@ -138,17 +147,17 @@ class ModManager(QMainWindow):
         self.exitButton.setFixedSize(QSize(260, 30))
         self.verticalLayout.addWidget(self.exitButton, 0, Qt.AlignHCenter | Qt.AlignVCenter)
         self.verticalLayout.addSpacerItem(QSpacerItem(10, 10, QSizePolicy.Fixed, QSizePolicy.Fixed))
-        # ---finalizing---------------------
+        # ------Layout stuff----------------
         self.horizontalLayout.addLayout(self.additionalLayout)
         self.horizontalLayout.addLayout(self.verticalLayout)
         self.setCentralWidget(self.centralwidget)
-        # ---menu---------------------------
+        # ------Menu------------------------
         self.menu = self.menuBar()
         prMenu = self.menu.addMenu(l.r.programMenu)
         orderMenu = self.menu.addMenu(l.r.sortingMenu)
         self.foldersMenu = self.menu.addMenu(l.r.foldersMenu)
         backupMenu = self.menu.addMenu(l.r.backupsMenu)
-        # ---program------------------------
+        # ------Program---------------------
         dumpACT = QAction(l.r.saveOrder, self)
         dumpACT.setShortcut('Ctrl+S')
         dumpACT.triggered.connect(self.dumpLoadOrder)
@@ -165,7 +174,7 @@ class ModManager(QMainWindow):
         # -------------
         self.exitACT = QAction(l.r.exitLabel, self)
         prMenu.addAction(self.exitACT)
-        # ---sorting------------------------
+        # ------Sorting---------------------
         orderACT = QAction(l.r.sortAsc, self)
         orderACT.triggered.connect(lambda: self.sortByType(True))
         orderMenu.addAction(orderACT)
@@ -173,7 +182,7 @@ class ModManager(QMainWindow):
         order1ACT = QAction(l.r.sortDesc, self)
         order1ACT.triggered.connect(lambda: self.sortByType(False))
         orderMenu.addAction(order1ACT)
-        # ---folders------------------------
+        # ------Folders---------------------
         gameFolder = QAction(l.r.openGameFolder, self)
         gameFolder.triggered.connect(lambda: self.folders_Opener(self.gamepath))
         self.foldersMenu.addAction(gameFolder)
@@ -185,7 +194,7 @@ class ModManager(QMainWindow):
         localModsFolder = QAction(l.r.openLocalMods, self)
         localModsFolder.triggered.connect(lambda: self.folders_Opener(self.doc_folder + 'mod/'))
         self.foldersMenu.addAction(localModsFolder)
-        # ---backups------------------------
+        # ------Backups---------------------
         self.openBackupMenu = QAction(l.r.openBackups, self)
         backupMenu.addAction(self.openBackupMenu)
         # -------------
@@ -193,7 +202,7 @@ class ModManager(QMainWindow):
         reload.triggered.connect(self.reloadOrder)
         backupMenu.addAction(reload)
 
-# ---------------------установка путей игры и работа с ними---------------------------
+# ---------------------Setting paths of the game----------------------------------
     def get_Disk_Links(self):
         self.doc_folder = os.path.join(os.path.expanduser('~'), 'Documents', 'Paradox Interactive', 'Stellaris') + '/'
         self.mod_folder = self.doc_folder + '/mod/'
@@ -223,8 +232,7 @@ class ModManager(QMainWindow):
         else:
             Popen(["xdg-open", path])
 
-# ---------------------загрузка данных модификаций------------------------------------
-    # получение данных из файлов .mod
+# ---------------------Get modifications data------------------------------------
     def getModInfoFromFiles(self, firstLaunch):
         try:
             self.modsToAdd = list()
@@ -258,8 +266,8 @@ class ModManager(QMainWindow):
             self.cursor.executemany("INSERT INTO mods VALUES (?,?,?,?,?,?,?,?,?,?)", self.modsToAdd)
             self.cursor.executemany("UPDATE mods SET name = ?, version = ?, tags = ?, picture = ? WHERE modID = ?", self.newValuesForMods)
             self.conn.commit()
-        except:
-            self.logs.error("Unexpected error", exc_info=True)
+        except Exception as err:
+            self.logs.error(err, exc_info=True)
 
     def getModData(self, mod, prior, update):
         try:
@@ -344,10 +352,10 @@ class ModManager(QMainWindow):
                 else:
                     newVal = [name, version, tags, picture, modID]
                     self.newValuesForMods.append(newVal)
-        except:
-            self.logs.error("Unexpected error", exc_info=True)
+        except Exception as err:
+            self.logs.error(err, exc_info=True)
 
-    # получение итоговых данных
+# ----------------------------Get final data-------------------------------------
     def getModList(self):
         try:
             self.cursor.execute("SELECT * FROM mods")
@@ -356,11 +364,10 @@ class ModManager(QMainWindow):
                 mod = Mod(row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7], row[8], row[9])
                 self.modList.append(mod)
             self.modList.sort(key=prior)
-        except:
-            self.logs.error("Unexpected error", exc_info=True)
+        except Exception as err:
+            self.logs.error(err, exc_info=True)
 
-# ----------------------визуальная составляющая--------------------------
-    # обновление таблицы
+# ----------------------Table and other visual-----------------------------------
     def dataDisplay(self, modList):
         self.modList = modList
         self.table.setRowCount(0)
@@ -406,7 +413,9 @@ class ModManager(QMainWindow):
         tmp = tmp.scaled(256, 256, Qt.KeepAspectRatio)
         self.pic.setPixmap(tmp)
 
+# ----------------------Switching mods state-------------------------------------
     def modSwitch(self, row, column):
+        # Single
         try:
             clr = self.modList[row].isEnabled
             if clr == 0:
@@ -417,10 +426,11 @@ class ModManager(QMainWindow):
                 for i in range(4):
                     self.table.item(row, i).setBackground(QColor('white'))
                 self.modList[row].isEnabled = 0
-        except:
-            self.logs.error("Unexpected error", exc_info=True)
+        except Exception as err:
+            self.logs.error(err, exc_info=True)
 
     def modSwitchAll(self, tp):
+        # All
         try:
             for i in range(len(self.modList)):
                 self.modList[i].isEnabled = tp
@@ -430,13 +440,14 @@ class ModManager(QMainWindow):
                 else:
                     for j in range(4):
                         self.table.item(i, j).setBackground(QColor.fromRgb(191, 245, 189))
-        except:
-            self.logs.error("Unexpected error", exc_info=True)
+        except Exception as err:
+            self.logs.error(err, exc_info=True)
 
+# -----------------------------Moving mods---------------------------------------
     def moveMod(self, row, column, tp):
         try:
             if tp == 0:
-                newpos, okPressed = QInputDialog.getText(self, '', l.r.newPos, QLineEdit.Normal, '')
+                newpos, okPressed = QInputDialog.getText(self, ' ', l.r.newPos, QLineEdit.Normal, '')
                 try:
                     newpos = int(newpos)
                     if okPressed and newpos >= 0 and newpos < len(self.modList):
@@ -461,10 +472,10 @@ class ModManager(QMainWindow):
                 self.dataDisplay(self.modList)
             else:
                 pass
-        except:
-            self.logs.error("Unexpected error", exc_info=True)
+        except Exception as err:
+            self.logs.error(err, exc_info=True)
 
-    # фильтрация эвентов ПКМ меню
+# -----------------------------RMB event-----------------------------------------
     def eventFilter(self, source, event):
         try:
             if(event.type() == QEvent.MouseButtonPress and event.buttons() == Qt.RightButton and source is self.table.viewport()):
@@ -496,14 +507,18 @@ class ModManager(QMainWindow):
                     disableAllMod.triggered.connect(lambda: self.modSwitchAll(0))
                     self.rcmenu.addAction(disableAllMod)
             return super(ModManager, self).eventFilter(source, event)
-        except:
-            self.logs.error("Unexpected error", exc_info=True)
+        except Exception as err:
+            self.logs.error(err, exc_info=True)
+        
+    def generateMenu(self, pos):
+        self.rcmenu.exec_(self.table.mapToGlobal(pos))
 
+# -----------------------------Search method-------------------------------------
     @pyqtSlot(str)
     def on_textChanged(self, text):
         try:
             for item in range(len(self.modList)):
-                if text in self.modList[item].name and text != '':
+                if text in self.modList[item].name and text != '' and len(text) > 1:
                     self.filterList.append(self.modList[item].modID)
                     for i in range(4):
                         self.table.item(item, i).setBackground(QColor('yellow'))
@@ -517,12 +532,10 @@ class ModManager(QMainWindow):
                             for i in range(4):
                                 self.table.item(item, i).setBackground(QColor('white'))
                             self.filterList.remove(self.modList[item].modID)
-        except:
-            self.logs.error("Unexpected error", exc_info=True)
+        except Exception as err:
+            self.logs.error(err, exc_info=True)
 
-    def generateMenu(self, pos):
-        self.rcmenu.exec_(self.table.mapToGlobal(pos))
-
+# -----------------------------Additional mod info-------------------------------
     def displayModData(self, row, column):
         try:
             self.modname.setText(self.modList[row].name)
@@ -548,16 +561,16 @@ class ModManager(QMainWindow):
                     self.printModPreview('nologo.png')
             self.textBrowser.setText(texttags)
             self.textBrowser.setMinimumSize(QSize(280, 35 + texttags.count('\n') * 25))
-        except:
-            self.logs.error("Unexpected error", exc_info=True)
+        except Exception as err:
+            self.logs.error(err, exc_info=True)
 
-# ------------------------технические методы--------------------------------
+# -----------------------------Technical stuff-----------------------------------
     def reloadOrder(self):
         try:
             self.modList = self.modListBackup
             self.dataDisplay(self.modList)
-        except:
-            self.logs.error("Unexpected error", exc_info=True)
+        except Exception as err:
+            self.logs.error(err, exc_info=True)
 
     def sortByType(self, btype):
         self.modList.sort(key=sortedKey, reverse=btype)
@@ -568,14 +581,13 @@ class ModManager(QMainWindow):
             self.saveInDB()
             self.saveInGame()
             self.writeLoadOrder()
-        except:
-            print('error')
-            self.logs.error("Unexpected error", exc_info=True)
+        except Exception as err:
+            self.logs.error(err, exc_info=True)
 
     def getHelp(self):
         QMessageBox.about(self, l.r.helpLabel, l.r.helpContent)
 
-# ------------------------запись в базу-------------------------------------
+# ----------------------Saving modlist to the game and DB------------------------
     def saveInDB(self):
         allFile = list()
         self.cursor.execute('DELETE FROM mods')
@@ -599,47 +611,53 @@ class ModManager(QMainWindow):
         self.conn.commit()
 
     def saveInGame(self):
-        settingsFile = self.doc_folder + 'settings.txt'
-        with open(settingsFile, 'r') as file:
-            settingsList = file.readlines()
-        text = ''
-        for i in range(len(settingsList)):
-            text += settingsList[i]
-        active = re.search(r'last_mods={.*autosave', text, flags=re.DOTALL)
-        newActive = 'last_mods={\n\t'
-        for mod in self.modList:
-            if mod.isEnabled == 1:
-                if mod.source == 'steam':
-                    newActive += '"mod/ugc_' + mod.modID + '.mod"\n\t'
-                else:
-                    newActive += '"mod/' + mod.modID + '.mod"\n\t'
-        newActive = newActive[:-1]
-        newActive += '}\nautosave'
         try:
-            active = active.group(0)
-        except AttributeError:
-            active = re.search(r'autosave', text, flags=re.DOTALL)
+            settingsFile = self.doc_folder + 'settings.txt'
+            with open(settingsFile, 'r') as file:
+                settingsList = file.readlines()
+            text = ''
+            for i in range(len(settingsList)):
+                text += settingsList[i]
+            active = re.search(r'last_mods={.*autosave', text, flags=re.DOTALL)
+            newActive = 'last_mods={\n\t'
+            for mod in self.modList:
+                if mod.isEnabled == 1:
+                    if mod.source == 'steam':
+                        newActive += '"mod/ugc_' + mod.modID + '.mod"\n\t'
+                    else:
+                        newActive += '"mod/' + mod.modID + '.mod"\n\t'
+            newActive = newActive[:-1]
+            newActive += '}\nautosave'
             try:
                 active = active.group(0)
             except AttributeError:
-                pass
-        text = text.replace(active, newActive)
-        with open(settingsFile, 'w+', encoding='utf-8') as file:
-            file.write(text)
+                active = re.search(r'autosave', text, flags=re.DOTALL)
+                try:
+                    active = active.group(0)
+                except AttributeError:
+                    pass
+            text = text.replace(active, newActive)
+            with open(settingsFile, 'w+', encoding='utf-8') as file:
+                file.write(text)
+        except Exception as err:
+            self.logs.error(err, exc_info=True)
 
     def writeLoadOrder(self):
-        data = {}
-        loadFile = self.doc_folder + 'dlc_load.json'
-        with open(loadFile, 'r+') as json_file:
-            data = json.load(json_file)
-        summary = []
-        for mod in self.modList:
-            if mod.isEnabled == 1:
-                if mod.source == 'steam':
-                    modStr = 'mod/ugc_' + mod.modID + '.mod'
-                else:
-                    modStr = 'mod/' + mod.modID + '.mod'
-                summary.append(modStr)
-        data['enabled_mods'] = summary
-        with open(loadFile, 'w') as json_file:
-            json.dump(data, json_file)
+        try:
+            data = {}
+            loadFile = self.doc_folder + 'dlc_load.json'
+            with open(loadFile, 'r+') as json_file:
+                data = json.load(json_file)
+            summary = []
+            for mod in self.modList:
+                if mod.isEnabled == 1:
+                    if mod.source == 'steam':
+                        modStr = 'mod/ugc_' + mod.modID + '.mod'
+                    else:
+                        modStr = 'mod/' + mod.modID + '.mod'
+                    summary.append(modStr)
+            data['enabled_mods'] = summary
+            with open(loadFile, 'w') as json_file:
+                json.dump(data, json_file)
+        except Exception as err:
+            self.logs.error(err, exc_info=True)

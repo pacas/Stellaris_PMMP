@@ -8,7 +8,7 @@ import submenu_backups as backups
 import main_mod_manager as manager
 import sys
 import os
-import psutil
+from psutil import disk_partitions
 import logging
 import sqlite3
 import atexit
@@ -19,12 +19,16 @@ class Controller(QWidget):
         super().__init__()
         self.gamepath = ''
         self.get_connection()
+        # -------------logging--------------
         if not os.path.exists("logs"):
             os.mkdir("logs")
         self.logs = logging.getLogger("St-PLP")
-        handler = logging.FileHandler(filename="logs/err-launcher.log", mode="w")
+        handler = logging.FileHandler(filename="logs/err-launcher.log", mode="a+")
+        formatter = logging.Formatter('%(asctime)s: %(message)s')
+        handler.setFormatter(formatter)
         self.logs.setLevel(logging.ERROR)
         self.logs.addHandler(handler)
+        # --------launcher window-----------
         try:
             self.get_Disk_Links()
             self.first_Launch()
@@ -32,16 +36,17 @@ class Controller(QWidget):
             self.Launcher.modmanager.clicked.connect(self.show_ModManager)
             self.Launcher.options.clicked.connect(self.show_Options)
             self.Launcher.exit.clicked.connect(self.close_Launcher)
-        except:
-            self.logs.error("Unexpected error", exc_info=True)
+        except Exception as err:
+            self.logs.error(err, exc_info=True)
 
+# ------------------- Windows methods--------------------------
     def show_Launcher(self):
         try:
             self.Launcher = launcher.Launcher()
             self.Launcher.launch.clicked.connect(lambda: self.Launcher.gamestart(self.gamepath + '/stellaris.exe'))
             self.Launcher.show()
-        except:
-            self.logs.error("Unexpected error", exc_info=True)
+        except Exception as err:
+            self.logs.error(err, exc_info=True)
 
     def show_ModManager(self):
         try:
@@ -52,28 +57,29 @@ class Controller(QWidget):
             self.ModManager.set_Game_Location(self.gamepath)
             self.ModManager.show()
             self.launch = 0
-        except:
-            self.logs.error("Unexpected error", exc_info=True)
+        except Exception as err:
+            self.logs.error(err, exc_info=True)
 
     def show_Options(self):
         try:
             self.Options = options.Options()
             self.Options.closew.clicked.connect(lambda: self.Options.close())
             self.Options.show()
-        except:
-            self.logs.error("Unexpected error", exc_info=True)
+        except Exception as err:
+            self.logs.error(err, exc_info=True)
 
     def show_Backups(self):
         try:
             self.Backups = backups.Backups()
             self.Backups.make.clicked.connect(lambda: self.Backups.make_Backup(self.ModManager.modList))
             self.Backups.load.clicked.connect(lambda: self.load_From_Backup_Connect())
-            self.Backups.delete.clicked.connect(lambda: self.remove_Backup())
+            self.Backups.delete.clicked.connect(lambda: self.Backups.remove_Backup())
             self.Backups.closew.clicked.connect(lambda: self.Backups.close())
             self.Backups.show()
-        except:
-            self.logs.error("Unexpected error", exc_info=True)
+        except Exception as err:
+            self.logs.error(err, exc_info=True)
 
+# -----------Connection between backup and MM modules----------
     def load_From_Backup_Connect(self):
         try:
             index = self.Backups.table.selectionModel().selectedRows()
@@ -81,22 +87,17 @@ class Controller(QWidget):
             newModList = self.Backups.load_From_Backup(self.ModManager.modList, cell)
             self.ModManager.dataDisplay(newModList)
             self.ModManager.modList = newModList
-        except:
-            self.logs.error("Unexpected error", exc_info=True)
+        except Exception as err:
+            self.logs.error(err, exc_info=True)
 
-    def remove_Backup(self):
-        try:
-            index = self.Backups.table.selectionModel().selectedRows()
-            cell = self.Backups.table.item(index[0].row(), 0).text()
-            os.remove('backup/' + cell + '.bak')
-            self.Backups.dataDisplay()
-        except:
-            self.logs.error("Unexpected error", exc_info=True)
-
+# ------------------- DB connections --------------------------
     def get_connection(self):
         self.conn = sqlite3.connect("modsDB.db")
         self.cursor = self.conn.cursor()
-        self.cursor.execute("CREATE TABLE IF NOT EXISTS mods (name text, path text, modID text, version text, tags text, state bit, source text, prior int, picture text, modfile text)")
+        self.cursor.execute('''CREATE TABLE IF NOT EXISTS mods 
+                            (name text, path text, modID text, version text, 
+                             tags text, state bit, source text, prior int, 
+                             picture text, modfile text)''')
         self.conn.commit()
         atexit.register(self.close_connection, self.conn)
 
@@ -105,7 +106,7 @@ class Controller(QWidget):
         conn.commit()
         conn.close()
 
-    # добавить везде кнопки закрытия и убрать эту функцию
+# -------------------I WILL CLOSE THIS ALL----------------------
     def close_Launcher(self):
         self.close_connection(self.conn)
         try:
@@ -125,6 +126,8 @@ class Controller(QWidget):
         except AttributeError:
             pass
 
+# -----------------Launcher settings and ini file--------------
+# I want to believe that no one will break this function, because I'm too lazy to rewrite it
     def first_Launch(self):
         try:
             with open('launcher-settings.ini', 'r', encoding='UTF-8') as settings:
@@ -136,14 +139,18 @@ class Controller(QWidget):
             self.launch = 1
             if self.check == 0:
                 print("\a")
-                QMessageBox.about(self, "Attention", "Please enter your game location in the next window (C:/Steam/steamapps/common/Stellaris as example)")
+                QMessageBox.about(self, "Attention", 
+                                  '''Please enter your game location in the next window 
+                                  (C:/Steam/steamapps/common/Stellaris as example)''')
                 self.gamepath, okPressed = QInputDialog.getText(self, 'Attention', 'Game location:', QLineEdit.Normal, '')
                 if okPressed:
                     test = self.gamepath + '\\stellaris.exe'
                     if os.path.isfile(test):
                         self.ini_Write(self.gamepath, 'eng')
                         print("\a")
-                        QMessageBox.about(self, 'Warning', 'Attention, if this is your first launch of the mod manager, YOU MUST RUN THE GAME AT LEAST ONCE!')
+                        QMessageBox.about(self, 'Warning', 
+                                          '''Attention, if this is your first launch of the mod manager, 
+                                          YOU MUST RUN THE GAME AT LEAST ONCE!''')
                     else:
                         print("\a")
                         QMessageBox.about(self, 'Warning', 'Enter valid name')
@@ -159,15 +166,15 @@ class Controller(QWidget):
     def get_Disk_Links(self):
         try:
             self.steam = '/Steam/steamapps/common/Stellaris/'
-            disks = psutil.disk_partitions()
+            disks = disk_partitions()
             self.check = 0
             for disk in disks:
                 if os.path.exists(disk.device + self.steam) is True:
                     self.steam = disk.device + self.steam
                     self.check = 1
                     break
-        except:
-            self.logs.error("Unexpected error", exc_info=True)
+        except Exception as err:
+            self.logs.error(err, exc_info=True)
 
     def ini_Write(self, path, lang):
         try:
@@ -181,6 +188,8 @@ class Controller(QWidget):
 if __name__ == '__main__':
     app = QApplication(sys.argv)
     app.setStyle('Fusion')
-    app.setStyleSheet('QPushButton {border: 3px solid #8f8f91; border-radius: 13px; background-color: #f6f7fa;} QPushButton:pressed {background-color: #adadad;}')
+    app.setStyleSheet('''QPushButton {border: 3px solid #8f8f91; 
+                      border-radius: 13px; background-color: #f6f7fa;} 
+                      QPushButton:pressed {background-color: #adadad;}''')
     Controller = Controller()
     sys.exit(app.exec())

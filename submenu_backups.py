@@ -76,6 +76,12 @@ class Backups(QMainWindow):
         else:
             print("\a")
             QMessageBox.about(self, l.r.warning, l.r.warningDesc2)
+    
+    def remove_Backup(self):
+        index = self.table.selectionModel().selectedRows()
+        cell = self.table.item(index[0].row(), 0).text()
+        os.remove('backup/' + cell + '.bak')
+        self.dataDisplay()
 
     def load_From_Backup(self, modList, name):
         with open('backup/' + name + '.bak', 'r', encoding='utf-8') as bfile:
