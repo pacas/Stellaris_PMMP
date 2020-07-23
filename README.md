@@ -26,16 +26,13 @@ All the main functions of the default launcher are included, and at the moment, 
 
 Features under development:
 * (maybe) Themes support
-* Multiplatform support
-* Others
-
+* (future) Multiplatform support
 
 Quick help:
 - Save load order with Ctrl+S or with Program/Save load order
 - RMB menu enabled
 - Double click to switch mod state
 - Drag & Drop working
-- The manager uses the same files as the default launcher, so if there is an error in them, then it will not work too. Paradox, WHY?
 - You can ask for help anytime on [this discord server](https://discord.gg/9JqvFrF)
 
 Additional screenshots:
