@@ -9,7 +9,7 @@ error = 'Ошибка'
 helpLabel = 'Помощь'
 # launcher
 launch = 'Запустить игру'
-modManager = 'Открыть менеджер модификаций'
+modManager = 'Открыть менеджер\nмодификаций'
 warningDesc1 = 'Произошла ошибка во время запуска игры'
 # options
 displayMode = 'Режим отображения'

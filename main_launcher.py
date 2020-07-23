@@ -8,6 +8,8 @@ from PyQt5.QtGui import QIcon, QImage, QPalette, QBrush, QFont
 import threading
 import os
 import langSelector as l
+import design.styles as style
+import files_const as pth
 
 
 class Launcher(QMainWindow):
@@ -17,8 +19,8 @@ class Launcher(QMainWindow):
         self.setFixedSize(QSize(800, 600))
         self.setWindowFlags(Qt.FramelessWindowHint)
         self.setWindowTitle('Launcher')
-        self.setWindowIcon(QIcon('logo.png'))
-        background = QImage('background.jpg')
+        self.setWindowIcon(QIcon(pth.logo))
+        background = QImage(pth.background_launcher)
         self.centralwidget = QWidget(self)
         self.centralwidget.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         self.gridLayout = QGridLayout(self.centralwidget)
@@ -26,15 +28,12 @@ class Launcher(QMainWindow):
         palette.setBrush(QPalette.Window, QBrush(background))
         self.setPalette(palette)
         # ----------------------------------
-        self.title = QLabel(' Stellaris PMMP', self.centralwidget)
+        self.title = QLabel('  ', self.centralwidget) # заглушка
         self.launch = QPushButton(l.r.launch, self.centralwidget)
         self.modmanager = QPushButton(l.r.modManager, self.centralwidget)
         self.options = QPushButton(l.r.options, self.centralwidget)
         self.exit = QPushButton(l.r.exitLabel, self.centralwidget)
         # ---layout-------------------------
-        newfont = QFont('Times', 18, QFont.Bold)
-        self.title.setStyleSheet('color: #3a86de;')
-        self.title.setFont(newfont)
         self.title.setFixedSize(QSize(400, 40))
         self.gridLayout.addWidget(self.title, 0, 0)
         self.launch.setFixedSize(QSize(200, 70))
@@ -49,7 +48,7 @@ class Launcher(QMainWindow):
         self.version = QLabel('v1.0.2', self.centralwidget)
         p = self.geometry().bottomLeft() - self.version.geometry().bottomLeft() - QPoint(-10, 10)
         self.version.move(p)
-        self.version.setStyleSheet('font-size: 14pt; color: #3a86de;')
+        self.version.setStyleSheet(style.launcher_version)
         # ----------------------------------
         self.setCentralWidget(self.centralwidget)
 

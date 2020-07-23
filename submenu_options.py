@@ -7,6 +7,8 @@ from PyQt5.QtCore import QSize, Qt
 from PyQt5.QtGui import QIcon, QImage, QPalette, QBrush
 import os
 import langSelector as l
+import design.styles as style
+import files_const as pth
 
 
 class Options(QMainWindow):
@@ -16,33 +18,40 @@ class Options(QMainWindow):
         self.setFixedSize(QSize(800, 600))
         self.setWindowTitle(l.r.options)
         self.setWindowFlags(Qt.FramelessWindowHint)
-        self.setWindowIcon(QIcon('logo.png'))
-        background = QImage('background.jpg')
+        self.setWindowIcon(QIcon(pth.logo))
+        background = QImage(pth.background_border)
         self.centralwidget = QWidget(self)
         self.centralwidget.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         self.gridLayout = QGridLayout(self.centralwidget)
         palette = QPalette()
         palette.setBrush(QPalette.Window, QBrush(background))
         self.setPalette(palette)
-        self.setStyleSheet('QLabel {font-size: 12pt; color: #3a86de;}')
+        self.setStyleSheet(style.options_labels)
         # ----------------------------------
         self.windowname = QLabel(l.r.displayMode, self.centralwidget)
         self.windowtype = QComboBox(self.centralwidget)
+        self.windowtype.setFixedSize(QSize(250, 25))
         self.windowtype.addItems([l.r.fullscreen, l.r.borderless, l.r.window])
         self.windowtype.currentIndexChanged.connect(self.displayChange)
         # ----------------------------------
         self.wsizename = QLabel(l.r.resolution, self.centralwidget)
         self.wsize = QComboBox(self.centralwidget)
-        self.wsize.addItems(['1920x1080', '3840x2160', '1680x1050', '1600x1024', '1600x900', '1440x900', '1366x768', '1360x768', '1280x1024', '1280x960', '1280x800', '1280x768', '1280x720', '1176x664', '1152x864', '1024x768'])
+        self.wsize.setFixedSize(QSize(250, 25))
+        self.wsize.addItems(['1920x1080', '3840x2160', '1680x1050', '1600x1024', '1600x900', 
+                             '1440x900', '1366x768', '1360x768', '1280x1024', '1280x960', 
+                             '1280x800', '1280x768', '1280x720', '1176x664', '1152x864', '1024x768'])
         self.wsize.currentIndexChanged.connect(self.resChange)
         # ----------------------------------
         self.langName = QLabel(l.r.gameLanguage, self.centralwidget)
         self.lang = QComboBox(self.centralwidget)
-        self.lang.addItems(['English', 'Russian', 'Deutsch', 'Polski', 'Portuguese', 'French', 'Spanish', 'Chinese'])
+        self.lang.setFixedSize(QSize(250, 25))
+        self.lang.addItems(['English', 'Russian', 'Deutsch', 'Polski', 
+                            'Portuguese', 'French', 'Spanish', 'Chinese'])
         self.lang.currentIndexChanged.connect(self.langChange)
         # ----------------------------------
         self.appLangName = QLabel(l.r.appLanguage, self.centralwidget)
         self.appLang = QComboBox(self.centralwidget)
+        self.appLang.setFixedSize(QSize(250, 25))
         self.appLang.addItems(['English', 'Russian'])
         self.appLang.currentIndexChanged.connect(self.appLangChange)
         # ----------------------------------
@@ -96,7 +105,7 @@ class Options(QMainWindow):
             index2 = self.lang.findText(text, Qt.MatchFixedString)
         self.lang.setCurrentIndex(index2)
         # ----------------------------------
-        with open('launcher-settings.ini', 'r') as file:
+        with open(pth.ini_file, 'r') as file:
             settingsList = file.readlines()
             self.appLanguage = settingsList[1][5:]
             self.startLang = self.appLanguage
@@ -186,10 +195,10 @@ class Options(QMainWindow):
         with open(self.settings, 'w+', encoding='utf-8') as file:
             for line in self.stList:
                 file.write(line)
-        with open('launcher-settings.ini', 'r') as file:
+        with open(pth.ini_file, 'r') as file:
             settingsList = file.readlines()
             settingsList[1] = 'lang=' + self.appLanguage
-        with open('launcher-settings.ini', 'w+') as file:
+        with open(pth.ini_file, 'w+') as file:
             for line in settingsList:
                 file.write(line)
         if self.startLang != self.appLanguage:

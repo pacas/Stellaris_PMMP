@@ -16,6 +16,7 @@ from glob import glob
 import re
 import json
 import langSelector as l
+import files_const as pth
 
 
 # keys for sorting
@@ -51,14 +52,14 @@ class ModManager(QMainWindow):
         # ------Lists and disk files--------
         self.get_Disk_Links()
         self.modList = list()
-        self.steamIcon = QPixmap('steam.png')
-        self.localIcon = QPixmap('local.png')
+        self.steamIcon = QPixmap(pth.steam_pic)
+        self.localIcon = QPixmap(pth.local_pic)
         self.filterList = list()
         # ------Logging---------------------
-        if not os.path.exists("logs"):
-            os.mkdir("logs")
+        if not os.path.exists(pth.logs_folder):
+            os.mkdir(pth.logs_folder)
         self.logs = logging.getLogger("St-PMMP")
-        handler = logging.FileHandler(filename="logs/err-mm.log", mode="a+")
+        handler = logging.FileHandler(filename=pth.logs_mm, mode="a+")
         formatter = logging.Formatter('%(asctime)s: %(message)s')
         handler.setFormatter(formatter)
         self.logs.setLevel(logging.ERROR)
@@ -75,7 +76,7 @@ class ModManager(QMainWindow):
         # ------Window setup----------------
         self.setMinimumSize(QSize(1200, 700))
         self.setWindowTitle(l.r.manager)
-        self.setWindowIcon(QIcon('logo.png'))
+        self.setWindowIcon(QIcon(pth.logo))
         # ------Central widget--------------
         self.centralwidget = QWidget(self)
         self.horizontalLayout = QHBoxLayout(self.centralwidget)
@@ -124,7 +125,7 @@ class ModManager(QMainWindow):
         self.verticalLayout.addWidget(self.modname, 0, Qt.AlignHCenter | Qt.AlignVCenter)
         # ------Preview pic-----------------
         self.pic = QLabel()
-        self.printModPreview('nologo.png')
+        self.printModPreview(pth.nologo)
         self.verticalLayout.addWidget(self.pic, 0, Qt.AlignHCenter | Qt.AlignVCenter)
         self.verticalLayout.addSpacerItem(QSpacerItem(20, 20, QSizePolicy.Fixed, QSizePolicy.Fixed))
         # ------Mod description-------------
@@ -206,10 +207,7 @@ class ModManager(QMainWindow):
     def get_Disk_Links(self):
         self.doc_folder = os.path.join(os.path.expanduser('~'), 'Documents', 'Paradox Interactive', 'Stellaris') + '/'
         self.mod_folder = self.doc_folder + '/mod/'
-        self.dlc_load = self.doc_folder + 'dlc_load.json'
-        self.mods_registry = self.doc_folder + 'mods_registry.json'
-        self.mods_data = self.doc_folder + 'mods_data.json'
-        self.game_data = self.doc_folder + 'game_data.json'
+        self.dlc_load = self.doc_folder + pth.dlc_load
         self.url = 'https://steamcommunity.com/sharedfiles/filedetails/?id='
         self.steam_url = 'steam://url/CommunityFilePage/'
 
@@ -224,6 +222,7 @@ class ModManager(QMainWindow):
             steamModsFolder.triggered.connect(lambda: self.folders_Opener(self.steam))
             self.foldersMenu.addAction(steamModsFolder)
 
+    # for future linux/mac releases
     def folders_Opener(self, path):
         if platform.system() == "Windows":
             os.startfile(path)
@@ -264,7 +263,8 @@ class ModManager(QMainWindow):
                 for mod in self.modsToCheck:
                     self.getModData(mod, prior, 1)
             self.cursor.executemany("INSERT INTO mods VALUES (?,?,?,?,?,?,?,?,?,?)", self.modsToAdd)
-            self.cursor.executemany("UPDATE mods SET name = ?, version = ?, tags = ?, picture = ? WHERE modID = ?", self.newValuesForMods)
+            self.cursor.executemany("UPDATE mods SET name = ?, version = ?, tags = ?, picture = ? WHERE modID = ?",
+                                    self.newValuesForMods)
             self.conn.commit()
         except Exception as err:
             self.logs.error(err, exc_info=True)
@@ -409,7 +409,7 @@ class ModManager(QMainWindow):
         if os.path.isfile(image):
             tmp = QPixmap(image)
         else:
-            tmp = QPixmap('nologo.png')
+            tmp = QPixmap(pth.nologo)
         tmp = tmp.scaled(256, 256, Qt.KeepAspectRatio)
         self.pic.setPixmap(tmp)
 
@@ -551,14 +551,14 @@ class ModManager(QMainWindow):
                 if self.modList[row].picture != '':
                     self.printModPreview(self.doc_folder + self.modList[row].path + '\\' + self.modList[row].picture)
                 else:
-                    self.printModPreview('nologo.png')
+                    self.printModPreview(pth.nologo)
             else:
                 self.linkButton.setVisible(1)
                 self.linkSteamButton.setVisible(1)
                 if self.modList[row].picture != '':
                     self.printModPreview(self.steam + self.modList[row].modID + '\\' + self.modList[row].picture)
                 else:
-                    self.printModPreview('nologo.png')
+                    self.printModPreview(pth.nologo)
             self.textBrowser.setText(texttags)
             self.textBrowser.setMinimumSize(QSize(280, 35 + texttags.count('\n') * 25))
         except Exception as err:
@@ -645,7 +645,7 @@ class ModManager(QMainWindow):
     def writeLoadOrder(self):
         try:
             data = {}
-            loadFile = self.doc_folder + 'dlc_load.json'
+            loadFile = self.dlc_load
             with open(loadFile, 'r+') as json_file:
                 data = json.load(json_file)
             summary = []

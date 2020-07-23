@@ -1,5 +1,8 @@
+import files_const as pth
+
+
 try:
-    with open('launcher-settings.ini', 'r', encoding='UTF-8') as settings:
+    with open(pth.ini_file, 'r', encoding='UTF-8') as settings:
         data = settings.readlines()
         lang = data[1][5:]
 except FileNotFoundError:

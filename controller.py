@@ -12,6 +12,8 @@ from psutil import disk_partitions
 import logging
 import sqlite3
 import atexit
+import design.styles as style
+import files_const as pth
 
 
 class Controller(QWidget):
@@ -19,16 +21,16 @@ class Controller(QWidget):
         super().__init__()
         self.gamepath = ''
         self.get_connection()
-        # -------------logging--------------
-        if not os.path.exists("logs"):
-            os.mkdir("logs")
+        # ----------Logging-----------------
+        if not os.path.exists(pth.logs_folder):
+            os.mkdir(pth.logs_folder)
         self.logs = logging.getLogger("St-PLP")
-        handler = logging.FileHandler(filename="logs/err-launcher.log", mode="a+")
+        handler = logging.FileHandler(filename=pth.logs_launcher, mode="a+")
         formatter = logging.Formatter('%(asctime)s: %(message)s')
         handler.setFormatter(formatter)
         self.logs.setLevel(logging.ERROR)
         self.logs.addHandler(handler)
-        # --------launcher window-----------
+        # --------Launcher window-----------
         try:
             self.get_Disk_Links()
             self.first_Launch()
@@ -51,6 +53,7 @@ class Controller(QWidget):
     def show_ModManager(self):
         try:
             self.ModManager = manager.ModManager(self.launch, self.conn, self.cursor)
+            self.ModManager.setStyleSheet(style.mm_buttons)
             self.ModManager.openBackupMenu.triggered.connect(self.show_Backups)
             self.ModManager.exitACT.triggered.connect(lambda: self.ModManager.close())
             self.ModManager.exitButton.clicked.connect(lambda: self.ModManager.close())
@@ -71,6 +74,7 @@ class Controller(QWidget):
     def show_Backups(self):
         try:
             self.Backups = backups.Backups()
+            self.Backups.setStyleSheet(style.backups_buttons)
             self.Backups.make.clicked.connect(lambda: self.Backups.make_Backup(self.ModManager.modList))
             self.Backups.load.clicked.connect(lambda: self.load_From_Backup_Connect())
             self.Backups.delete.clicked.connect(lambda: self.Backups.remove_Backup())
@@ -92,7 +96,7 @@ class Controller(QWidget):
 
 # ------------------- DB connections --------------------------
     def get_connection(self):
-        self.conn = sqlite3.connect("modsDB.db")
+        self.conn = sqlite3.connect(pth.DB)
         self.cursor = self.conn.cursor()
         self.cursor.execute('''CREATE TABLE IF NOT EXISTS mods 
                             (name text, path text, modID text, version text, 
@@ -130,7 +134,7 @@ class Controller(QWidget):
 # I want to believe that no one will break this function, because I'm too lazy to rewrite it
     def first_Launch(self):
         try:
-            with open('launcher-settings.ini', 'r', encoding='UTF-8') as settings:
+            with open(pth.ini_file, 'r', encoding='UTF-8') as settings:
                 data = settings.readlines()
                 self.gamepath = data[0][14:-1]
                 self.lang = data[1][5:]
@@ -178,7 +182,7 @@ class Controller(QWidget):
 
     def ini_Write(self, path, lang):
         try:
-            with open('launcher-settings.ini', 'w+', encoding='UTF-8') as settings:
+            with open(pth.ini_file, 'w+', encoding='UTF-8') as settings:
                 settings.write('game_location=' + path + '\nlang=' + lang)
         except FileNotFoundError:
             print("\a")
@@ -187,9 +191,9 @@ class Controller(QWidget):
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
-    app.setStyle('Fusion')
-    app.setStyleSheet('''QPushButton {border: 3px solid #8f8f91; 
-                      border-radius: 13px; background-color: #f6f7fa;} 
-                      QPushButton:pressed {background-color: #adadad;}''')
     Controller = Controller()
+    # --------Design options------------
+    app.setStyle('Fusion')
+    app.setStyleSheet(style.main_design)
+    # --------Final close func----------
     sys.exit(app.exec())

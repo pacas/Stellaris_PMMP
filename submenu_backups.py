@@ -11,6 +11,7 @@ import datetime
 import feature_dnd as dnd
 import re
 import langSelector as l
+import files_const as pth
 
 
 class BackupFile():
@@ -26,8 +27,8 @@ class Backups(QMainWindow):
         super().__init__(*args, **kwargs)
         # ----------------------------------
         self.setWindowTitle(l.r.backups)
-        self.setWindowIcon(QIcon('logo.png'))
-        self.folder = 'backup'
+        self.setWindowIcon(QIcon(pth.logo))
+        self.folder = pth.backup_folder
         # ---central widget----------------
         self.centralwidget = QWidget(self)
         self.gridLayout = QGridLayout(self.centralwidget)
@@ -67,7 +68,7 @@ class Backups(QMainWindow):
         if okPressed and name != '' and regex.search(name) is None:
             if not os.path.exists(self.folder):
                 os.mkdir(self.folder)
-            with open('backup/' + name + '.bak', 'w+', encoding='utf-8') as bfile:
+            with open(pth.backup_folder + '/' + name + '.bak', 'w+', encoding='utf-8') as bfile:
                 today = datetime.datetime.today()
                 bfile.write(name + ' ' + str(len(modList)) + ' ' + today.strftime('%H:%M:%S-%d/%b/%Y') + '\n')
                 for mod in modList:
@@ -80,11 +81,11 @@ class Backups(QMainWindow):
     def remove_Backup(self):
         index = self.table.selectionModel().selectedRows()
         cell = self.table.item(index[0].row(), 0).text()
-        os.remove('backup/' + cell + '.bak')
+        os.remove(pth.backup_folder + '/' + cell + '.bak')
         self.dataDisplay()
 
     def load_From_Backup(self, modList, name):
-        with open('backup/' + name + '.bak', 'r', encoding='utf-8') as bfile:
+        with open(pth.backup_folder + '/' + name + '.bak', 'r', encoding='utf-8') as bfile:
             data = bfile.readlines()
             data.pop(0)
             counter = 0
@@ -108,7 +109,7 @@ class Backups(QMainWindow):
             os.mkdir(self.folder)
             backups = list()
         else:
-            template = 'backup/*.bak'
+            template = pth.backup_folder + '/*.bak'
             backups = glob.glob(template)
         return backups
 
