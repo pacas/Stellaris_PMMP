@@ -8,7 +8,7 @@ If you have Python 3 installed, you can use the script version (PyQt5 and psutil
 
 Launcher preview: 
  
-![Launcher Preview](https://i.imgur.com/6YuI0Eh.png)
+![Launcher Preview](https://i.imgur.com/eSgDACx.png)
  
 Mod manager preview: 
  
@@ -40,6 +40,6 @@ Quick help:
 
 Additional screenshots:
  
-![Options Preview](https://i.imgur.com/xOraDBI.png)
+![Options Preview](https://i.imgur.com/qzKQfz8.png)
 ![Backups Preview](https://i.imgur.com/Yhraowg.png)
 ![Another Manager Preview](https://i.imgur.com/ZOtXDzp.png)
