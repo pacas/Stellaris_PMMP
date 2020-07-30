@@ -23,11 +23,12 @@ import files_const as pth
 def sortedKey(mod):
     return mod.sortedKey
 
+
 def prior(mod):
     return mod.prior
 
 
-# mod storage structure 
+# mod storage structure
 class Mod():
     def __init__(self, name, path, modID, version, tags, isEnabled, source, prior, picture, modfile):
         self.name = name
@@ -44,11 +45,12 @@ class Mod():
 
 
 class ModManager(QMainWindow):
-    def __init__(self, first, conn, cursor, *args, **kwargs):
+    def __init__(self, first, conn, cursor, steam, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # ------DB connection---------------
         self.conn = conn
         self.cursor = cursor
+        self.steam = steam
         # ------Lists and disk files--------
         self.get_Disk_Links()
         self.modList = list()
@@ -195,6 +197,11 @@ class ModManager(QMainWindow):
         localModsFolder = QAction(l.r.openLocalMods, self)
         localModsFolder.triggered.connect(lambda: self.folders_Opener(self.doc_folder + 'mod/'))
         self.foldersMenu.addAction(localModsFolder)
+        # -------------
+        if self.steam != '':
+            steamModsFolder = QAction(l.r.openSteamMods, self)
+            steamModsFolder.triggered.connect(lambda: self.folders_Opener(self.steamMM))
+            self.foldersMenu.addAction(steamModsFolder)
         # ------Backups---------------------
         self.openBackupMenu = QAction(l.r.openBackups, self)
         backupMenu.addAction(self.openBackupMenu)
@@ -211,17 +218,6 @@ class ModManager(QMainWindow):
         self.url = 'https://steamcommunity.com/sharedfiles/filedetails/?id='
         self.steam_url = 'steam://url/CommunityFilePage/'
 
-    def set_Game_Location(self, path):
-        self.gamepath = path
-        try:
-            self.steam = path[:path.find('steamapps') + 10] + 'workshop/content/281990/'
-        except:
-            self.steam = ''
-        if self.steam != '':
-            steamModsFolder = QAction(l.r.openSteamMods, self)
-            steamModsFolder.triggered.connect(lambda: self.folders_Opener(self.steam))
-            self.foldersMenu.addAction(steamModsFolder)
-
     # for future linux/mac releases
     def folders_Opener(self, path):
         if platform.system() == "Windows":
@@ -237,10 +233,15 @@ class ModManager(QMainWindow):
             self.modsToAdd = list()
             self.modsToCheck = list()
             self.newValuesForMods = list()
-            self.dotModList = glob(self.mod_folder + '*.mod')
+            allModList = glob(self.mod_folder + '*.mod')
+            if self.steam != '':
+                steamModList = glob(self.mod_folder + 'ugc_*.mod')
+                localModList = [i for i in allModList + steamModList if i not in allModList or i not in steamModList]
+                steamModList = glob(self.steam + '*/descriptor.mod')
+                allModList = steamModList + localModList
             if firstLaunch == 1:
                 prior = 0
-                for mod in self.dotModList:
+                for mod in allModList:
                     self.getModData(mod, prior, 0)
                     prior += 1
             else:
@@ -250,9 +251,9 @@ class ModManager(QMainWindow):
                 self.cursor.execute("SELECT * FROM mods")
                 records = self.cursor.fetchall()
                 for mod in records:
-                    if mod[9] not in self.dotModList:
+                    if mod[9] not in allModList:
                         self.cursor.execute("DELETE FROM mods WHERE modfile = '" + mod[9] + "'")
-                for mod in self.dotModList:
+                for mod in allModList:
                     self.cursor.execute("SELECT EXISTS(SELECT name FROM mods WHERE modfile = '" + mod + "')")
                     records = self.cursor.fetchall()
                     if records[0][0] == 0:
@@ -306,7 +307,7 @@ class ModManager(QMainWindow):
                     version = version[19:-1]
                 remote_file_id = re.search(r'remote_file_id=".*"', text)
                 if remote_file_id is None:
-                    if path.find('steamapps') != -1:
+                    if mod.find('steamapps') != -1:
                         source = 'steam'
                     else:
                         source = 'local'
@@ -320,13 +321,13 @@ class ModManager(QMainWindow):
                     try:
                         modID = path.split('mod/')
                         modID = modID[1]
-                    except:
+                    except Exception:
                         try:
-                            modID = path.split('281990/')
+                            modID = mod.split('281990\\')
                             modID = modID[1]
-                            modID = modID.split('/')
+                            modID = modID.split('\\')
                             modID = modID[0]
-                        except:
+                        except Exception:
                             modID = '---'
                 picture = re.search(r'picture=".*"', text)
                 try:
@@ -460,7 +461,7 @@ class ModManager(QMainWindow):
                         self.dataDisplay(self.modList)
                     else:
                         QMessageBox.about(self, l.r.error, l.r.errorPos)
-                except:
+                except Exception:
                     QMessageBox.about(self, l.r.error, l.r.errorPos)
             elif tp == 1 and row != 0:
                 self.modList.insert(0, self.modList[row])
@@ -509,7 +510,7 @@ class ModManager(QMainWindow):
             return super(ModManager, self).eventFilter(source, event)
         except Exception as err:
             self.logs.error(err, exc_info=True)
-        
+
     def generateMenu(self, pos):
         self.rcmenu.exec_(self.table.mapToGlobal(pos))
 
@@ -551,14 +552,28 @@ class ModManager(QMainWindow):
                 if self.modList[row].picture != '':
                     self.printModPreview(self.doc_folder + self.modList[row].path + '\\' + self.modList[row].picture)
                 else:
-                    self.printModPreview(pth.nologo)
+                    pngList = glob(self.doc_folder + self.modList[row].path + '\*.png')
+                    jpgList = glob(self.doc_folder + self.modList[row].path + '\*.jpg')
+                    jpegList = glob(self.doc_folder + self.modList[row].path + '\*.jpeg')
+                    previewList = pngList + jpgList + jpegList
+                    if len(previewList) != 0:
+                        self.printModPreview(previewList[0])
+                    else:
+                        self.printModPreview(pth.nologo)
             else:
                 self.linkButton.setVisible(1)
                 self.linkSteamButton.setVisible(1)
                 if self.modList[row].picture != '':
                     self.printModPreview(self.steam + self.modList[row].modID + '\\' + self.modList[row].picture)
                 else:
-                    self.printModPreview(pth.nologo)
+                    pngList = glob(self.steam + self.modList[row].modID + '\*.png')
+                    jpgList = glob(self.steam + self.modList[row].modID + '\*.jpg')
+                    jpegList = glob(self.steam + self.modList[row].modID + '\*.jpeg')
+                    previewList = pngList + jpgList + jpegList
+                    if len(previewList) != 0:
+                        self.printModPreview(previewList[0])
+                    else:
+                        self.printModPreview(pth.nologo)
             self.textBrowser.setText(texttags)
             self.textBrowser.setMinimumSize(QSize(280, 35 + texttags.count('\n') * 25))
         except Exception as err:
@@ -583,6 +598,10 @@ class ModManager(QMainWindow):
             self.writeLoadOrder()
         except Exception as err:
             self.logs.error(err, exc_info=True)
+    
+    def Diff(li1, li2): 
+        li_dif = [i for i in li1 + li2 if i not in li1 or i not in li2] 
+        return li_dif 
 
     def getHelp(self):
         QMessageBox.about(self, l.r.helpLabel, l.r.helpContent)

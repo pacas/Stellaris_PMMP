@@ -4,7 +4,7 @@
 from PyQt5.QtWidgets import QMainWindow, QWidget, QSizePolicy, QLabel
 from PyQt5.QtWidgets import QGridLayout, QPushButton, QMessageBox
 from PyQt5.QtCore import QSize, QPoint, Qt
-from PyQt5.QtGui import QIcon, QImage, QPalette, QBrush, QFont
+from PyQt5.QtGui import QIcon, QImage, QPalette, QBrush
 import threading
 import os
 import langSelector as l
@@ -28,7 +28,7 @@ class Launcher(QMainWindow):
         palette.setBrush(QPalette.Window, QBrush(background))
         self.setPalette(palette)
         # ----------------------------------
-        self.title = QLabel('  ', self.centralwidget) # заглушка
+        self.title = QLabel('  ', self.centralwidget)  # заглушка
         self.launch = QPushButton(l.r.launch, self.centralwidget)
         self.modmanager = QPushButton(l.r.modManager, self.centralwidget)
         self.options = QPushButton(l.r.options, self.centralwidget)

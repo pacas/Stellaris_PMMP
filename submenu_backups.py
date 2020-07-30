@@ -77,7 +77,7 @@ class Backups(QMainWindow):
         else:
             print("\a")
             QMessageBox.about(self, l.r.warning, l.r.warningDesc2)
-    
+
     def remove_Backup(self):
         index = self.table.selectionModel().selectedRows()
         cell = self.table.item(index[0].row(), 0).text()

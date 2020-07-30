@@ -52,12 +52,12 @@ class Controller(QWidget):
 
     def show_ModManager(self):
         try:
-            self.ModManager = manager.ModManager(self.launch, self.conn, self.cursor)
+            self.set_Game_Location_MM()
+            self.ModManager = manager.ModManager(self.launch, self.conn, self.cursor, self.steamMM)
             self.ModManager.setStyleSheet(style.mm_buttons)
             self.ModManager.openBackupMenu.triggered.connect(self.show_Backups)
             self.ModManager.exitACT.triggered.connect(lambda: self.ModManager.close())
             self.ModManager.exitButton.clicked.connect(lambda: self.ModManager.close())
-            self.ModManager.set_Game_Location(self.gamepath)
             self.ModManager.show()
             self.launch = 0
         except Exception as err:
@@ -98,9 +98,9 @@ class Controller(QWidget):
     def get_connection(self):
         self.conn = sqlite3.connect(pth.DB)
         self.cursor = self.conn.cursor()
-        self.cursor.execute('''CREATE TABLE IF NOT EXISTS mods 
-                            (name text, path text, modID text, version text, 
-                             tags text, state bit, source text, prior int, 
+        self.cursor.execute('''CREATE TABLE IF NOT EXISTS mods
+                            (name text, path text, modID text, version text,
+                             tags text, state bit, source text, prior int,
                              picture text, modfile text)''')
         self.conn.commit()
         atexit.register(self.close_connection, self.conn)
@@ -143,8 +143,8 @@ class Controller(QWidget):
             self.launch = 1
             if self.check == 0:
                 print("\a")
-                QMessageBox.about(self, "Attention", 
-                                  '''Please enter your game location in the next window 
+                QMessageBox.about(self, "Attention",
+                                  '''Please enter your game location in the next window
                                   (C:/Steam/steamapps/common/Stellaris as example)''')
                 self.gamepath, okPressed = QInputDialog.getText(self, 'Attention', 'Game location:', QLineEdit.Normal, '')
                 if okPressed:
@@ -152,8 +152,8 @@ class Controller(QWidget):
                     if os.path.isfile(test):
                         self.ini_Write(self.gamepath, 'eng')
                         print("\a")
-                        QMessageBox.about(self, 'Warning', 
-                                          '''Attention, if this is your first launch of the mod manager, 
+                        QMessageBox.about(self, 'Warning',
+                                          '''Attention, if this is your first launch of the mod manager,
                                           YOU MUST RUN THE GAME AT LEAST ONCE!''')
                     else:
                         print("\a")
@@ -179,6 +179,12 @@ class Controller(QWidget):
                     break
         except Exception as err:
             self.logs.error(err, exc_info=True)
+    
+    def set_Game_Location_MM(self):
+        try:
+            self.steamMM = self.gamepath[:self.gamepath.find('steamapps') + 10] + 'workshop/content/281990/'
+        except Exception:
+            self.steamMM = ''
 
     def ini_Write(self, path, lang):
         try:

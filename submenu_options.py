@@ -37,15 +37,15 @@ class Options(QMainWindow):
         self.wsizename = QLabel(l.r.resolution, self.centralwidget)
         self.wsize = QComboBox(self.centralwidget)
         self.wsize.setFixedSize(QSize(250, 25))
-        self.wsize.addItems(['1920x1080', '3840x2160', '1680x1050', '1600x1024', '1600x900', 
-                             '1440x900', '1366x768', '1360x768', '1280x1024', '1280x960', 
+        self.wsize.addItems(['1920x1080', '3840x2160', '1680x1050', '1600x1024', '1600x900',
+                             '1440x900', '1366x768', '1360x768', '1280x1024', '1280x960',
                              '1280x800', '1280x768', '1280x720', '1176x664', '1152x864', '1024x768'])
         self.wsize.currentIndexChanged.connect(self.resChange)
         # ----------------------------------
         self.langName = QLabel(l.r.gameLanguage, self.centralwidget)
         self.lang = QComboBox(self.centralwidget)
         self.lang.setFixedSize(QSize(250, 25))
-        self.lang.addItems(['English', 'Russian', 'Deutsch', 'Polski', 
+        self.lang.addItems(['English', 'Russian', 'Deutsch', 'Polski',
                             'Portuguese', 'French', 'Spanish', 'Chinese'])
         self.lang.currentIndexChanged.connect(self.langChange)
         # ----------------------------------
