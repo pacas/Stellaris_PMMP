@@ -14,6 +14,7 @@ from subprocess import Popen
 import logging
 from glob import glob
 import re
+from shutil import copy2
 import json
 import langSelector as l
 import files_const as pth
@@ -353,6 +354,14 @@ class ModManager(QMainWindow):
                 else:
                     newVal = [name, version, tags, picture, modID]
                     self.newValuesForMods.append(newVal)
+            if (source == 'steam') and not (os.path.exists(self.mod_folder + 'ugc_' + modID + '.mod')):
+                copy2(mod, self.mod_folder + 'ugc_' + modID + '.mod')
+                newpath = mod.split('\\desc')[0]
+                with open(self.mod_folder + 'ugc_' + modID + '.mod', mode='a+') as file2:
+                    newline = '\npath="' + newpath + '"'
+                    newline = newline.replace('\\', '/')
+                    newline = newline.replace('//', '/')
+                    file2.write(newline)
         except Exception as err:
             self.logs.error(err, exc_info=True)
 

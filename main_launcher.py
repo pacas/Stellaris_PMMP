@@ -45,7 +45,7 @@ class Launcher(QMainWindow):
         self.exit.setFixedSize(QSize(200, 70))
         self.gridLayout.addWidget(self.exit, 4, 0)
         # ---launcher-version---------------
-        self.version = QLabel('v1.0.3', self.centralwidget)
+        self.version = QLabel('v1.0.3.1', self.centralwidget)
         p = self.geometry().bottomLeft() - self.version.geometry().bottomLeft() - QPoint(-10, 10)
         self.version.move(p)
         self.version.setStyleSheet(style.launcher_version)
