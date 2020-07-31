@@ -307,7 +307,7 @@ class ModManager(QMainWindow):
                     version = version[19:-1]
                 remote_file_id = re.search(r'remote_file_id=".*"', text)
                 if remote_file_id is None:
-                    if mod.find('steamapps') != -1:
+                    if mod.find('workshop') != -1:
                         source = 'steam'
                     else:
                         source = 'local'
