@@ -1,4 +1,7 @@
 # Alternative Stellaris launcher with advanced mod manager for Stellaris v2.4+
+
+# Project on hold because of recent default Stellaris launcher updates.
+
 Greetings to all, this is the github rep of the PMMP mod manager.
 This mod manager with a built-in launcher has a very simple design with advanced functionality.
  
